@@ -11,6 +11,8 @@ server/.env
 client/dist/
 server/build/
 
+# dependency directories
+
 # logs
 *.log
 
