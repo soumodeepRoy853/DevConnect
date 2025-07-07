@@ -16,8 +16,16 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    followers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    }],
+    following: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    }]
     
 }, {timestamps: true})
 
-const userModel = mongoose.models.user || mongoose.model("user", userSchema)
-export default userModel;
+const User = mongoose.models.User || mongoose.model("User", userSchema)
+export default User;

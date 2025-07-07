@@ -53,7 +53,7 @@ export const registerUser = async (req, res) =>{
         res.status(500).json({ message: "Internal server error" });
         
     }
-}
+};
 
 export const loginUser = async (req, res) => {
     try {
@@ -92,19 +92,21 @@ export const loginUser = async (req, res) => {
 }
 
 export const getUser = async(req, res)=>{
-    try {
-        const user = await User.findById(req.user).select('-password')
+   try {
+    const user = await User.findById(req.user.id)
+      .select('-password')
+      .populate("following", "name email"); // Optional: populate info
 
-        if(!user){
-            return res.status(404).json({message: "User not found"});
-        }
-        res.status(200).json({
-            message: "User fetched successfully",
-            user
-        });
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ message: "Internal server error" });
-        
+    if(!user){
+      return res.status(404).json({ message: "User not found" });
     }
+
+    res.status(200).json({
+      message: "User fetched successfully",
+      user
+    });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
 }
