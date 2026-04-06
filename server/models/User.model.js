@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    avatar: {
+        type: String,
+        default: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y",
+    },
     followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
@@ -26,6 +30,8 @@ const userSchema = new mongoose.Schema({
     }]
     
 }, {timestamps: true})
+
+userSchema.index({ name: 1 });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema)
 export default User;

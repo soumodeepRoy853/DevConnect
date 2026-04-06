@@ -1,50 +1,61 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+"use client";
 
-// Create context
-const AuthContext = createContext();
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+const AUTH_STORAGE_KEY = "devconnect-auth";
+const AuthContext = createContext(null);
 
 // Custom hook
 export const useAuth = () => useContext(AuthContext);
 
 // Provider
 export const AuthProvider = ({ children }) => {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [auth, setAuth] = useState({
     user: null,
     token: null,
   });
 
-  const [isAuthReady, setIsAuthReady] = useState(false); // ✅ Track loading
+  const [isAuthReady, setIsAuthReady] = useState(false); 
 
   // Load from localStorage
   useEffect(() => {
-    const storedAuth = localStorage.getItem("devconnect-auth");
+    if (typeof window === "undefined") return;
+    const storedAuth = window.localStorage.getItem(AUTH_STORAGE_KEY);
     if (storedAuth) {
-      setAuth(JSON.parse(storedAuth));
+      try {
+        setAuth(JSON.parse(storedAuth));
+      } catch {
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
     }
-    setIsAuthReady(true); // ✅ Done loading
+    setIsAuthReady(true);
   }, []);
 
   // Save to localStorage on change
   useEffect(() => {
+    if (typeof window === "undefined") return;
     if (auth.token) {
-      localStorage.setItem("devconnect-auth", JSON.stringify(auth));
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
     } else {
-      localStorage.removeItem("devconnect-auth");
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }, [auth]);
 
   const logout = () => {
     setAuth({ user: null, token: null });
-    localStorage.removeItem("devconnect-auth");
-    navigate("/login");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+    router.push("/login");
   };
 
-  return (
-    <AuthContext.Provider value={{ auth, setAuth, logout, isAuthReady }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ auth, setAuth, logout, isAuthReady }),
+    [auth, isAuthReady]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

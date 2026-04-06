@@ -33,5 +33,7 @@ const postSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+postSchema.index({ user: 1, createdAt: -1 });
+
 const Post = mongoose.models.Post || mongoose.model("Post", postSchema);
 export default Post;

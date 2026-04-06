@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import 'dotenv/config'
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDb from './config/connectDb.js';
 import userRouter from './routes/user.route.js';
 import profileRouter from './routes/profile.route.js';
@@ -10,7 +12,10 @@ import searchRouter from './routes/search.routes.js';
 import uploadRouter from './routes/upload.route.js';
 
 
-//app config
+// app config
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const port = process.env.PORT || 5000;
 connectDb();

@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { useAuth } from "../context/authContext";
 import { motion } from "framer-motion";
@@ -19,10 +21,10 @@ const PostCard = ({
       animate={{ opacity: 1, y: 0 }}
       className="bg-white shadow p-4 mb-4 rounded-md border border-gray-100"
     >
-      {/* 🧑 Author */}
+      {/* Author */}
       <div className="flex items-center mb-3">
         <img
-          src={post.user?.avatar || "/default-avatar.png"}
+          src={post.user?.avatar || "/default-avatar.svg"}
           alt="avatar"
           className="w-10 h-10 rounded-full object-cover border mr-3"
         />
@@ -36,12 +38,12 @@ const PostCard = ({
         </div>
       </div>
 
-      {/* 📝 Text */}
+      {/* Text */}
       {post.text && (
         <p className="text-gray-800 mb-3 whitespace-pre-line">{post.text}</p>
       )}
 
-      {/* 🖼️ Image */}
+      {/* Image */}
       {post.image && (
         <img
           src={post.image}
@@ -50,13 +52,13 @@ const PostCard = ({
         />
       )}
 
-      {/* ❤️ Like & 🗑 Delete */}
+      {/* Like and delete */}
       <div className="flex items-center justify-between text-sm text-gray-600">
         <button
           onClick={() => onLike(post._id)}
           className="flex items-center gap-1 hover:text-red-500 transition"
         >
-          {post.likes?.some((like) => like.user === auth.user.id) ? (
+          {post.likes?.some((like) => like.user === auth.user?.id) ? (
             <FaHeart className="text-red-500" />
           ) : (
             <FaRegHeart />
@@ -74,7 +76,7 @@ const PostCard = ({
         )}
       </div>
 
-      {/* 💬 Comment section */}
+      {/* Comment section */}
       <div className="mt-4">
         <strong className="text-sm text-gray-800">Comments:</strong>
         {post.comments?.map((c) => (

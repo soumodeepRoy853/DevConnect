@@ -1,24 +1,16 @@
+"use client";
+
 import React, { useState } from "react";
-import axios from "axios";
-import { useAuth } from "../context/authContext";
+import api from "../services/api";
 
 const CommentSection = ({ postId, comments }) => {
-  const { auth } = useAuth();
   const [text, setText] = useState("");
-  const [allComments, setAllComments] = useState(comments);
+  const [allComments, setAllComments] = useState(comments || []);
 
   const handleAddComment = async () => {
     if (!text.trim()) return;
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/post/comment/${postId}`,
-        { text },
-        {
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-          },
-        }
-      );
+      const res = await api.post(`/post/comment/${postId}`, { text });
       setAllComments(res.data.comments);
       setText("");
     } catch (err) {
@@ -31,7 +23,7 @@ const CommentSection = ({ postId, comments }) => {
       <h3 className="font-semibold mb-2">Comments</h3>
       {allComments.map((c, i) => (
         <div key={i} className="mb-2 border-b pb-1">
-          <span className="font-semibold">{c.user.name || "User"}:</span>{" "}
+          <span className="font-semibold">{c.user?.name || "User"}:</span>{" "}
           <span>{c.text}</span>
         </div>
       ))}

@@ -1,18 +1,19 @@
-import User from '../models/User.model.js';
+import { searchUsersService } from "../services/search.service.js";
+import { validateSearchQuery } from "../validators/search.validator.js";
 
 export const searchUsers = async (req, res) => {
     try {
-        const { query } = req.query;
+        const query = validateSearchQuery(req.query.query);
+        const result = await searchUsersService(query, req.pagination);
+        const response = { users: result.users };
 
-        if(!query || query.trim() === "") {
-            return res.status(400).json({ message: "Search query is required" });
+        if (result.pagination) {
+            response.pagination = result.pagination;
         }
-        const users = await User.find({
-            name: { $regex: query, $options: "i"},   
-        }).select("name email");
-        res.status(200).json({ users })
-        
+
+        res.status(200).json(response);
     } catch (err) {
-        res.dtatus(500).json({ message: " Server Eror" })
+        const status = err.status || 500;
+        res.status(status).json({ message: err.message || "Server error" });
     }
 }

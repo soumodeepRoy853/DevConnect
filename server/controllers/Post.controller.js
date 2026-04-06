@@ -1,29 +1,25 @@
-import Post from "../models/Post.model.js";
-import User from "../models/User.model.js";
+import {
+  addCommentService,
+  createPostService,
+  deletePostService,
+  getFeedPostsService,
+  getPostsByUserService,
+  toggleLikeService,
+} from "../services/post.service.js";
+import {
+  validateCommentInput,
+  validateCreatePostInput,
+} from "../validators/post.validator.js";
 
 //Create post
 export const createPost = async (req, res) => {
   try {
-    const { text, image } = req.body;
-    const userId = req.user.id;
-
-    const newPost = new Post({
-      user: userId,
-      text,
-      image,
-    });
-
-    if (req.file) {
-      newPost.image = `/uploads/posts/${req.file.filename}`;
-    }
-
-    const savedPost = await newPost.save();
-    await savedPost.populate("user", ["name", "avatar"]);
-
-    res.status(201).json({ post: savedPost });
+    const payload = validateCreatePostInput(req.body);
+    const post = await createPostService(req.user.id, payload, req.file);
+    res.status(201).json({ post });
   } catch (err) {
-    console.error("Create post error:", err);
-    res.status(500).json({ message: "Server error" });
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
   }
 };
 
@@ -31,60 +27,51 @@ export const createPost = async (req, res) => {
 //Get feed posts
 export const getFeedPosts = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const currentUser = await User.findById(userId).select("following");
+    const result = await getFeedPostsService(req.user.id, req.pagination);
+    const response = { posts: result.posts };
 
-    const feedUserIds = [...currentUser.following, userId]; // include self
-    const posts = await Post.find({ user: { $in: feedUserIds } })
-      .sort({ createdAt: -1 })
-      .populate("user", ["name", "avatar" ]);
+    if (result.pagination) {
+      response.pagination = result.pagination;
+    }
 
-    res.status(200).json({ posts });
+    res.status(200).json(response);
   } catch (err) {
-    res.status(500).json({ message: "Server error while fetching feed." });
+    const status = err.status || 500;
+    res
+      .status(status)
+      .json({ message: err.message || "Server error while fetching feed." });
   }
 };
 
 //Get post by user
 export const getPostsByUser = async (req, res) => {
   try {
-    const posts = await Post.find({ user: req.params.userId })
-      .sort({ createdAt: -1 })
-      .populate("user", ["name", "avatar"]);
-    res.status(200).json({ posts });
+    const result = await getPostsByUserService(req.params.userId);
+    const response = { posts: result.posts };
 
+    if (result.pagination) {
+      response.pagination = result.pagination;
+    }
 
+    res.status(200).json(response);
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
   }
 };
 
 //Like/Unlike post
 export const toggleLike = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.postId).populate("user", "name avatar");
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
-
-    const userId = req.user.id;
-
-    const alreadyLiked = post.likes.includes(userId);
-
-    if (alreadyLiked) {
-      post.likes = post.likes.filter((id) => id.toString() !== userId);
-      post.likeCount -= 1;
-    } else {
-      post.likes.push(userId);
-      post.likeCount += 1;
-    }
-
-    await post.save();
+    const { post, alreadyLiked } = await toggleLikeService(
+      req.params.postId,
+      req.user.id
+    );
 
     res.status(200).json({ message: alreadyLiked ? "Unliked" : "Liked", post });
   } catch (err) {
-    console.error("Toggle like error:", err);
-    res.status(500).json({ message: "Server error" });
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
   }
 };
 
@@ -92,48 +79,29 @@ export const toggleLike = async (req, res) => {
 //Add comment to post
 export const addComment = async (req, res) => {
   try {
-    const { text } = req.body;
+    const payload = validateCommentInput(req.body);
+    const comments = await addCommentService(
+      req.params.postId,
+      req.user.id,
+      payload
+    );
 
-    if (!text) {
-      return res.status(400).json({ message: "Comment text is required" });
-    }
-
-    const post = await Post.findById(req.params.postId);
-
-    if (!post) {
-      console.log(req.params.postId);
-      return res.status(404).json({ message: "Post not found" });
-    }
-
-    const comment = {
-      user: req.user.id,
-      text,
-    };
-    post.comments.push(comment);
-    await post.save();
-
-    res.status(201).json({ message: "Comment added successfully", comments: post.comments });
-;
+    res
+      .status(201)
+      .json({ message: "Comment added successfully", comments });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
   }
 };
 
 //Delete post
 export const deletePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.postId);
-
-    if (!post || post.user.toString() !== req.user.id) {
-      // console.log(req.params.postId)
-      return res.status(403).json({ message: "Unauthorized or not found!" });
-    }
-
-    await post.deleteOne();
-
+    await deletePostService(req.params.postId, req.user.id);
     res.status(200).json({ message: "Post deleted" });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Server error" });
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
   }
 };

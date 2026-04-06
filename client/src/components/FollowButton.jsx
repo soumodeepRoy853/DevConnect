@@ -1,7 +1,9 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useAuth } from "../context/authContext";
 import { motion } from "framer-motion";
+import api from "../services/api";
 
 const FollowButton = ({ userId, onFollowChange }) => {
   const { auth } = useAuth();
@@ -12,12 +14,7 @@ const FollowButton = ({ userId, onFollowChange }) => {
   useEffect(() => {
     const fetchFollowData = async () => {
       try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/follow/${auth.user.id}/follow-data`,
-          {
-            headers: { Authorization: `Bearer ${auth.token}` },
-          }
-        );
+        const res = await api.get(`/follow/${auth.user.id}/follow-data`);
         const followingIds = res.data.following.map((u) => u._id);
         setIsFollowing(followingIds.includes(userId));
       } catch (err) {
@@ -27,23 +24,16 @@ const FollowButton = ({ userId, onFollowChange }) => {
       }
     };
 
-    if (auth?.user?.id !== userId) {
-      fetchFollowData();
-    }
-  }, [auth, userId]);
+    if (!auth?.user?.id || auth?.user?.id === userId) return;
+    fetchFollowData();
+  }, [auth?.user?.id, userId]);
 
   const handleToggleFollow = async () => {
     if (actionLoading) return;
     setActionLoading(true);
     try {
       const endpoint = isFollowing ? "unfollow" : "follow-user";
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/follow/${endpoint}/${userId}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        }
-      );
+      await api.put(`/follow/${endpoint}/${userId}`, {});
       setIsFollowing(!isFollowing);
       onFollowChange && onFollowChange();
     } catch (err) {
@@ -53,7 +43,7 @@ const FollowButton = ({ userId, onFollowChange }) => {
     }
   };
 
-  if (auth?.user?.id === userId || loading) return null;
+  if (!auth?.user?.id || auth?.user?.id === userId || loading) return null;
 
   return (
     <motion.button

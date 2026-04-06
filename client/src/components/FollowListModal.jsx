@@ -1,5 +1,7 @@
+"use client";
+
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 const FollowListModal = ({ title, users, onClose }) => {
@@ -70,13 +72,13 @@ const FollowListModal = ({ title, users, onClose }) => {
               {filteredUsers.map((user) => (
                 <li key={user._id} className="border-b pb-2 flex items-center gap-2">
                   <img
-                    src={user.avatar || "/default-avatar.png"}
+                    src={user.avatar || "/default-avatar.svg"}
                     alt={user.name}
                     className="w-8 h-8 rounded-full object-cover"
                   />
                   <div>
                     <Link
-                      to={`/user/${user._id}`}
+                      href={`/user/${user._id}`}
                       onClick={onClose}
                       className="font-semibold text-blue-600 hover:underline"
                     >
