@@ -22,7 +22,7 @@ const Navbar = () => {
 
         {auth.user ? (
           <>
-            <Link href="/" className="hover:underline">Home</Link>
+            <Link href="/feed" className="hover:underline">Home</Link>
             <Link href="/profile" className="hover:underline">My Profile</Link>
             <Link href="/explore" className="hover:underline">Discover</Link>
             <Link href="/edit-profile" className="hover:underline">Edit</Link>

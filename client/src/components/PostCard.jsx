@@ -14,6 +14,13 @@ const PostCard = ({
 }) => {
   const { auth } = useAuth();
   const isOwner = post.user?._id === auth.user?.id;
+  const hasLiked = Boolean(
+    auth.user?.id &&
+      post.likes?.some((like) => {
+        const likeId = like?._id || like;
+        return likeId && likeId.toString() === auth.user?.id;
+      })
+  );
 
   return (
     <motion.div
@@ -58,7 +65,7 @@ const PostCard = ({
           onClick={() => onLike(post._id)}
           className="flex items-center gap-1 hover:text-red-500 transition"
         >
-          {post.likes?.some((like) => like.user === auth.user?.id) ? (
+          {hasLiked ? (
             <FaHeart className="text-red-500" />
           ) : (
             <FaRegHeart />
@@ -81,7 +88,10 @@ const PostCard = ({
         <strong className="text-sm text-gray-800">Comments:</strong>
         {post.comments?.map((c) => (
           <div key={c._id} className="text-xs text-gray-600 border-b py-1">
-            {c.text}
+            <span className="font-semibold">
+              {c.user?.name || "User"}:
+            </span>{" "}
+            <span>{c.text}</span>
           </div>
         ))}
         <form
