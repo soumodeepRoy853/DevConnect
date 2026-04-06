@@ -38,18 +38,34 @@ const buildPaginationMeta = ({ page, limit, total }) => {
 export const getFeedPostsService = async (userId, pagination) => {
   ensureObjectId(userId, "Invalid user ID.");
 
-  const currentUser = await User.findById(userId).select("following");
+  const currentUser = await User.findById(userId).select(
+    "following followers"
+  );
   if (!currentUser) {
     throw createHttpError(404, "User not found");
   }
 
-  const feedUserIds = [...currentUser.following, userId];
+  const following = Array.isArray(currentUser.following)
+    ? currentUser.following
+    : [];
+  const followers = Array.isArray(currentUser.followers)
+    ? currentUser.followers
+    : [];
+
+  const feedUserIds = [
+    ...new Set(
+      [...following, ...followers, userId]
+        .filter(Boolean)
+        .map((id) => id.toString())
+    ),
+  ];
   const filter = { user: { $in: feedUserIds } };
 
   if (!pagination) {
     const posts = await Post.find(filter)
       .sort({ createdAt: -1 })
-      .populate("user", ["name", "avatar"]);
+      .populate("user", ["name", "avatar"])
+      .populate("comments.user", ["name", "avatar"]);
 
     return { posts, pagination: null };
   }
@@ -61,7 +77,8 @@ export const getFeedPostsService = async (userId, pagination) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("user", ["name", "avatar"]),
+      .populate("user", ["name", "avatar"])
+      .populate("comments.user", ["name", "avatar"]),
     Post.countDocuments(filter),
   ]);
 
@@ -76,7 +93,8 @@ export const getPostsByUserService = async (userId, pagination) => {
   if (!pagination) {
     const posts = await Post.find(filter)
       .sort({ createdAt: -1 })
-      .populate("user", ["name", "avatar"]);
+      .populate("user", ["name", "avatar"])
+      .populate("comments.user", ["name", "avatar"]);
 
     return { posts, pagination: null };
   }
@@ -88,7 +106,8 @@ export const getPostsByUserService = async (userId, pagination) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("user", ["name", "avatar"]),
+      .populate("user", ["name", "avatar"])
+      .populate("comments.user", ["name", "avatar"]),
     Post.countDocuments(filter),
   ]);
 
@@ -128,6 +147,7 @@ export const addCommentService = async (postId, userId, data) => {
 
   post.comments.push({ user: userId, text: data.text });
   await post.save();
+  await post.populate("comments.user", ["name", "avatar"]);
 
   return post.comments;
 };
@@ -144,3 +164,5 @@ export const deletePostService = async (postId, userId) => {
   await post.deleteOne();
   return true;
 };
+
+
