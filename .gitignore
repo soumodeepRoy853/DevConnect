@@ -9,6 +9,7 @@ server/.env
 
 # build output
 client/dist/
+client/.next/
 server/build/
 
 # dependency directories
