@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import RequireAuth from "../../components/RequireAuth";
-import api from "../../services/api";
+import RequireAuth from "../../../components/RequireAuth";
+import api from "../../../services/api";
 
 const ProfileViewPage = () => {
   const { id } = useParams();

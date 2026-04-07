@@ -21,6 +21,13 @@ const postSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     text: { type: String },
     image: { type: String },
+    visibility: {
+      type: String,
+      enum: ["public", "followers", "private"],
+      default: "public",
+      required: true,
+    },
+    repostOf: { type: mongoose.Schema.Types.ObjectId, ref: "Post" },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     comments: [
       {

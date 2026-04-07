@@ -8,6 +8,7 @@ const CreatePost = ({ onPostCreated }) => {
   const { auth } = useAuth();
   const [text, setText] = useState("");
   const [image, setImage] = useState(null);
+  const [visibility, setVisibility] = useState("public");
   const [loading, setLoading] = useState(false);
 
   const handleImageUpload = async () => {
@@ -34,6 +35,7 @@ const CreatePost = ({ onPostCreated }) => {
       const res = await api.post("/post", {
         text,
         image: imageUrl || "",
+        visibility,
       });
 
       if (onPostCreated) {
@@ -65,10 +67,19 @@ const CreatePost = ({ onPostCreated }) => {
         onChange={(e) => setImage(e.target.files[0])}
         className="mb-2"
       />
+      <select
+        value={visibility}
+        onChange={(e) => setVisibility(e.target.value)}
+        className="mb-2 p-2 border rounded"
+      >
+        <option value="public">Public</option>
+        <option value="followers">Only followers</option>
+        <option value="private">Private</option>
+      </select>
       <button
         type="submit"
         disabled={loading}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        className="mt-3 ml-0.5 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
       >
         {loading ? "Posting..." : "Post"}
       </button>

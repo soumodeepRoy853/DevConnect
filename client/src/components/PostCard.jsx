@@ -3,13 +3,14 @@
 import React from "react";
 import { useAuth } from "../context/authContext";
 import { motion } from "framer-motion";
-import { FaHeart, FaRegHeart, FaTrash } from "react-icons/fa";
+import { FaHeart, FaRegHeart, FaTrash, FaRetweet } from "react-icons/fa";
 
 const PostCard = ({
   post,
   onLike = () => {},
   onDelete = () => {},
   onCommentSubmit = () => {},
+  onRepost = () => {},
   showDelete = true,
 }) => {
   const { auth } = useAuth();
@@ -46,8 +47,43 @@ const PostCard = ({
       </div>
 
       {/* Text */}
-      {post.text && (
-        <p className="text-gray-800 mb-3 whitespace-pre-line">{post.text}</p>
+      {/* If this is a repost, show original post inside a small card */}
+      {post.repostOf && post.repostOf.user ? (
+        <div className="border rounded p-3 mb-3 bg-gray-50">
+          <div className="flex items-center mb-2">
+            <img
+              src={post.repostOf.user?.avatar || "/default-avatar.svg"}
+              alt="avatar"
+              className="w-8 h-8 rounded-full object-cover border mr-3"
+            />
+            <div>
+              <h4 className="font-semibold text-gray-700">
+                {post.repostOf.user?.name || "Unknown"}
+              </h4>
+              <p className="text-xs text-gray-500">
+                {new Date(post.repostOf.createdAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {post.repostOf.text && (
+            <p className="text-gray-800 mb-2 whitespace-pre-line">
+              {post.repostOf.text}
+            </p>
+          )}
+
+          {post.repostOf.image && (
+            <img
+              src={post.repostOf.image}
+              alt="original-post"
+              className="w-full rounded-lg mb-2 max-h-[300px] object-cover border"
+            />
+          )}
+        </div>
+      ) : (
+        post.text && (
+          <p className="text-gray-800 mb-3 whitespace-pre-line">{post.text}</p>
+        )
       )}
 
       {/* Image */}
@@ -61,17 +97,28 @@ const PostCard = ({
 
       {/* Like and delete */}
       <div className="flex items-center justify-between text-sm text-gray-600">
-        <button
-          onClick={() => onLike(post._id)}
-          className="flex items-center gap-1 hover:text-red-500 transition"
-        >
-          {hasLiked ? (
-            <FaHeart className="text-red-500" />
-          ) : (
-            <FaRegHeart />
-          )}
-          <span>{post.likes?.length || 0}</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onLike(post._id)}
+            className="flex items-center gap-1 hover:text-red-500 transition"
+          >
+            {hasLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
+            <span>{post.likes?.length || 0}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              const originalId = post.repostOf && (post.repostOf._id || post.repostOf) ? (post.repostOf._id || post.repostOf) : post._id;
+              onRepost(originalId, Boolean(post.isRepostedByViewer));
+            }}
+            className={`flex items-center gap-1 transition ${post.isRepostedByViewer ? "text-green-600" : "hover:text-blue-600"}`}
+            title={post.repostCount ? `${post.repostCount} repost(s)` : "Be the first to repost"}
+          >
+            <FaRetweet />
+            <span>{post.isRepostedByViewer ? "Undo Repost" : "Repost"}</span>
+            <span className="ml-1 text-xs text-gray-500">{post.repostCount || 0}</span>
+          </button>
+        </div>
 
         {isOwner && showDelete && (
           <button

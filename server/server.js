@@ -22,13 +22,14 @@ connectDb();
 
 // middleware
 app.use(express.json())
-app.use(cors({
-		origin: [
-			"http://localhost:3000"
-		],
+const allowedOrigins = [process.env.CLIENT_URL || "http://localhost:3000", "http://localhost:3001"];
+app.use(
+	cors({
+		origin: allowedOrigins,
 		credentials: true,
 		allowedHeaders: ["Content-Type", "Authorization"],
-	}),);
+	})
+);
 
 // api endpoint
 app.use('/api/user', userRouter);

@@ -1,4 +1,5 @@
 import Post from "../models/Post.model.js";
+import mongoose from "mongoose";
 import User from "../models/User.model.js";
 import { createHttpError } from "../utils/httpError.js";
 import { ensureObjectId } from "../utils/objectId.js";
@@ -10,6 +11,7 @@ export const createPostService = async (userId, data, file) => {
     user: userId,
     text: data.text,
     image: data.image,
+    visibility: data.visibility,
   });
 
   if (file) {
@@ -51,23 +53,57 @@ export const getFeedPostsService = async (userId, pagination) => {
   const followers = Array.isArray(currentUser.followers)
     ? currentUser.followers
     : [];
-
-  const feedUserIds = [
-    ...new Set(
-      [...following, ...followers, userId]
-        .filter(Boolean)
-        .map((id) => id.toString())
-    ),
-  ];
-  const filter = { user: { $in: feedUserIds } };
+  // Build visibility-aware filter:
+  // - public posts (or posts missing visibility for backward compatibility)
+  // - posts by the current user (always visible)
+  // - posts with visibility 'followers' from users the current user follows
+  const filter = {
+    $or: [
+      { visibility: "public" },
+      { visibility: { $exists: false } },
+      { user: userId },
+      { $and: [{ visibility: "followers" }, { user: { $in: following } }] },
+    ],
+  };
 
   if (!pagination) {
     const posts = await Post.find(filter)
       .sort({ createdAt: -1 })
       .populate("user", ["name", "avatar"])
-      .populate("comments.user", ["name", "avatar"]);
+      .populate("comments.user", ["name", "avatar"])
+      .populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } });
 
-    return { posts, pagination: null };
+    // attach repost counts and viewer repost status
+    const plainPosts = posts.map((p) => p.toObject());
+    const originalIds = [
+      ...new Set(
+        plainPosts.map((p) => {
+          const orig = p.repostOf ? (p.repostOf._id || p.repostOf) : p._id;
+          return String(orig);
+        })
+      ),
+    ].map((id) => new mongoose.Types.ObjectId(id));
+
+    if (originalIds.length > 0) {
+      const counts = await Post.aggregate([
+        { $match: { repostOf: { $in: originalIds } } },
+        { $group: { _id: "$repostOf", count: { $sum: 1 } } },
+      ]);
+
+      const countsMap = {};
+      counts.forEach((c) => (countsMap[String(c._id)] = c.count));
+
+      const viewerReposts = await Post.find({ user: userId, repostOf: { $in: originalIds } }).select("repostOf").lean();
+      const viewerSet = new Set(viewerReposts.map((r) => String(r.repostOf)));
+
+      plainPosts.forEach((pp) => {
+        const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
+        pp.repostCount = countsMap[orig] || 0;
+        pp.isRepostedByViewer = viewerSet.has(orig);
+      });
+    }
+
+    return { posts: plainPosts, pagination: null };
   }
 
   const { page, limit, skip } = pagination;
@@ -78,25 +114,107 @@ export const getFeedPostsService = async (userId, pagination) => {
       .skip(skip)
       .limit(limit)
       .populate("user", ["name", "avatar"])
-      .populate("comments.user", ["name", "avatar"]),
+      .populate("comments.user", ["name", "avatar"])
+      .populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } }),
     Post.countDocuments(filter),
   ]);
 
-  return { posts, pagination: buildPaginationMeta({ page, limit, total }) };
+  // attach repost counts and viewer repost status for paginated results
+  const plainPosts = posts.map((p) => p.toObject());
+  const originalIds = [
+    ...new Set(
+      plainPosts.map((p) => {
+        const orig = p.repostOf ? (p.repostOf._id || p.repostOf) : p._id;
+        return String(orig);
+      })
+    ),
+  ].map((id) => new mongoose.Types.ObjectId(id));
+
+  if (originalIds.length > 0) {
+    const counts = await Post.aggregate([
+      { $match: { repostOf: { $in: originalIds } } },
+      { $group: { _id: "$repostOf", count: { $sum: 1 } } },
+    ]);
+
+    const countsMap = {};
+    counts.forEach((c) => (countsMap[String(c._id)] = c.count));
+
+    const viewerReposts = await Post.find({ user: userId, repostOf: { $in: originalIds } }).select("repostOf").lean();
+    const viewerSet = new Set(viewerReposts.map((r) => String(r.repostOf)));
+
+    plainPosts.forEach((pp) => {
+      const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
+      pp.repostCount = countsMap[orig] || 0;
+      pp.isRepostedByViewer = viewerSet.has(orig);
+    });
+  }
+
+  return { posts: plainPosts, pagination: buildPaginationMeta({ page, limit, total }) };
 };
 
-export const getPostsByUserService = async (userId, pagination) => {
-  ensureObjectId(userId, "Invalid user ID.");
+export const getPostsByUserService = async (targetUserId, viewerId, pagination) => {
+  ensureObjectId(targetUserId, "Invalid user ID.");
 
-  const filter = { user: userId };
+  const targetUser = await User.findById(targetUserId).select("followers");
+  if (!targetUser) {
+    throw createHttpError(404, "User not found");
+  }
+
+  let filter;
+
+  // If the viewer is the target user, return all posts (including private)
+  if (viewerId && targetUserId.toString() === viewerId.toString()) {
+    filter = { user: targetUserId };
+  } else {
+    const isFollower = Array.isArray(targetUser.followers)
+      ? targetUser.followers.some((id) => id.toString() === (viewerId || ""))
+      : false;
+
+    if (isFollower) {
+      filter = { user: targetUserId, visibility: { $in: ["public", "followers"] } };
+    } else {
+      filter = { user: targetUserId, $or: [{ visibility: "public" }, { visibility: { $exists: false } }] };
+    }
+  }
 
   if (!pagination) {
     const posts = await Post.find(filter)
       .sort({ createdAt: -1 })
       .populate("user", ["name", "avatar"])
-      .populate("comments.user", ["name", "avatar"]);
+      .populate("comments.user", ["name", "avatar"])
+      .populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } });
 
-    return { posts, pagination: null };
+    // attach repost counts and viewer repost status
+    const plainPosts = posts.map((p) => p.toObject());
+    const originalIds = [
+      ...new Set(
+        plainPosts.map((p) => {
+          const orig = p.repostOf ? (p.repostOf._id || p.repostOf) : p._id;
+          return String(orig);
+        })
+      ),
+    ].map((id) => new mongoose.Types.ObjectId(id));
+
+    if (originalIds.length > 0) {
+      const counts = await Post.aggregate([
+        { $match: { repostOf: { $in: originalIds } } },
+        { $group: { _id: "$repostOf", count: { $sum: 1 } } },
+      ]);
+
+      const countsMap = {};
+      counts.forEach((c) => (countsMap[String(c._id)] = c.count));
+
+      const viewerReposts = await Post.find({ user: viewerId, repostOf: { $in: originalIds } }).select("repostOf").lean();
+      const viewerSet = new Set(viewerReposts.map((r) => String(r.repostOf)));
+
+      plainPosts.forEach((pp) => {
+        const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
+        pp.repostCount = countsMap[orig] || 0;
+        pp.isRepostedByViewer = viewerSet.has(orig);
+      });
+    }
+
+    return { posts: plainPosts, pagination: null };
   }
 
   const { page, limit, skip } = pagination;
@@ -107,11 +225,42 @@ export const getPostsByUserService = async (userId, pagination) => {
       .skip(skip)
       .limit(limit)
       .populate("user", ["name", "avatar"])
-      .populate("comments.user", ["name", "avatar"]),
+      .populate("comments.user", ["name", "avatar"])
+      .populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } }),
     Post.countDocuments(filter),
   ]);
 
-  return { posts, pagination: buildPaginationMeta({ page, limit, total }) };
+  // attach repost counts and viewer repost status for paginated results
+  const plainPosts = posts.map((p) => p.toObject());
+  const originalIds = [
+    ...new Set(
+      plainPosts.map((p) => {
+        const orig = p.repostOf ? (p.repostOf._id || p.repostOf) : p._id;
+        return String(orig);
+      })
+    ),
+  ].map((id) => new mongoose.Types.ObjectId(id));
+
+  if (originalIds.length > 0) {
+    const counts = await Post.aggregate([
+      { $match: { repostOf: { $in: originalIds } } },
+      { $group: { _id: "$repostOf", count: { $sum: 1 } } },
+    ]);
+
+    const countsMap = {};
+    counts.forEach((c) => (countsMap[String(c._id)] = c.count));
+
+    const viewerReposts = await Post.find({ user: viewerId, repostOf: { $in: originalIds } }).select("repostOf").lean();
+    const viewerSet = new Set(viewerReposts.map((r) => String(r.repostOf)));
+
+    plainPosts.forEach((pp) => {
+      const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
+      pp.repostCount = countsMap[orig] || 0;
+      pp.isRepostedByViewer = viewerSet.has(orig);
+    });
+  }
+
+  return { posts: plainPosts, pagination: buildPaginationMeta({ page, limit, total }) };
 };
 
 export const toggleLikeService = async (postId, userId) => {
@@ -134,6 +283,49 @@ export const toggleLikeService = async (postId, userId) => {
   await post.save();
 
   return { post, alreadyLiked };
+};
+
+export const repostService = async (originalPostId, userId) => {
+  ensureObjectId(originalPostId, "Invalid post ID.");
+  ensureObjectId(userId, "Invalid user ID.");
+
+  const original = await Post.findById(originalPostId).populate("user", "name avatar");
+  if (!original) {
+    throw createHttpError(404, "Post not found");
+  }
+
+  // Only allow reposting of public posts (treat missing visibility as public)
+  if (original.visibility && original.visibility !== "public") {
+    throw createHttpError(403, "Cannot repost non-public post");
+  }
+
+  // Prevent duplicate reposts by the same user
+  const alreadyReposted = await Post.findOne({ user: userId, repostOf: original._id });
+  if (alreadyReposted) {
+    throw createHttpError(409, "You have already reposted this post");
+  }
+
+  const repost = new Post({ user: userId, repostOf: original._id });
+  const saved = await repost.save();
+
+  await saved.populate("user", ["name", "avatar"]);
+  await saved.populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } });
+
+  return saved;
+};
+
+export const unrepostService = async (originalPostId, userId) => {
+  ensureObjectId(originalPostId, "Invalid post ID.");
+  ensureObjectId(userId, "Invalid user ID.");
+
+  const repost = await Post.findOne({ user: userId, repostOf: originalPostId });
+  if (!repost) {
+    throw createHttpError(404, "Repost not found");
+  }
+
+  const repostId = repost._id.toString();
+  await repost.deleteOne();
+  return repostId;
 };
 
 export const addCommentService = async (postId, userId, data) => {

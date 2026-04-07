@@ -33,7 +33,8 @@ const DashboardPage = () => {
   }, [auth?.token]);
 
   const handlePostCreated = (newPost) => {
-    setPosts((prev) => [newPost, ...prev]);
+    const safe = { repostCount: 0, isRepostedByViewer: false, ...newPost };
+    setPosts((prev) => [safe, ...prev]);
   };
 
   const toggleLike = async (postId) => {
@@ -63,6 +64,43 @@ const DashboardPage = () => {
       );
     } catch {
       // No-op
+    }
+  };
+
+  const handleRepost = async (originalId, alreadyReposted) => {
+    try {
+      if (alreadyReposted) {
+        const res = await api.post(`/post/unrepost/${originalId}`);
+        const repostId = res.data.repostId;
+        setPosts((prev) => {
+          const filtered = prev.filter((p) => p._id !== repostId);
+          return filtered.map((p) => {
+            const orig = p.repostOf ? (p.repostOf._id || p.repostOf) : p._id;
+            if (String(orig) === String(originalId)) {
+              return { ...p, repostCount: Math.max(0, (p.repostCount || 0) - 1), isRepostedByViewer: false };
+            }
+            return p;
+          });
+        });
+      } else {
+        const res = await api.post(`/post/repost/${originalId}`);
+        const newPost = res.data.post;
+        setPosts((prev) => {
+          const updated = [newPost, ...prev];
+          return updated.map((p) => {
+            const orig = p.repostOf ? (p.repostOf._id || p.repostOf) : p._id;
+            if (String(orig) === String(originalId)) {
+              return { ...p, repostCount: (p.repostCount || 0) + 1, isRepostedByViewer: true };
+            }
+            return p;
+          });
+        });
+      }
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 409) alert("You have already reposted this post.");
+      else if (status === 403) alert("Cannot repost non-public post.");
+      else alert("Failed to repost.");
     }
   };
 
@@ -118,6 +156,7 @@ const DashboardPage = () => {
                 post={post}
                 onLike={toggleLike}
                 onCommentSubmit={addComment}
+                onRepost={handleRepost}
               />
             ))
           )}
