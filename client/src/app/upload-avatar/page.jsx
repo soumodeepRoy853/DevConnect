@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import RequireAuth from "../components/RequireAuth";
-import api from "../services/api";
+import RequireAuth from "../../components/RequireAuth";
+import api from "../../services/api";
 
 const UploadAvatarPage = () => {
   const [file, setFile] = useState(null);

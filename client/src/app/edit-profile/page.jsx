@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import RequireAuth from "../components/RequireAuth";
-import api from "../services/api";
+import RequireAuth from "../../components/RequireAuth";
+import api from "../../services/api";
 
 const EditProfilePage = () => {
   const router = useRouter();

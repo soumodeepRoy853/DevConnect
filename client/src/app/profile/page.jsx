@@ -6,6 +6,7 @@ import RequireAuth from "../../components/RequireAuth";
 import FollowInfo from "../../components/FollowInfo";
 import api from "../../services/api";
 
+
 const ProfilePage = () => {
   const { auth } = useAuth();
   const [profile, setProfile] = useState(null);
