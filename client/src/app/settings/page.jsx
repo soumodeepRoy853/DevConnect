@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import RequireAuth from "../components/RequireAuth";
+import RequireAuth from "../../components/RequireAuth";
 
 const SettingsPage = () => {
   const [oldPass, setOldPass] = useState("");

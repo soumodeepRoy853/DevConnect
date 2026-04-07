@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import RequireAuth from "../components/RequireAuth";
-import CreatePost from "../components/CreatePost";
-import PostCard from "../components/PostCard";
-import api from "../services/api";
+
+import PostCard from "../../components/PostCard";
+import RequireAuth from "../../components/RequireAuth";
+import CreatePost from "../../components/CreatePost";
+import api from "../../services/api";
 
 const FeedPage = () => {
   const [posts, setPosts] = useState([]);
