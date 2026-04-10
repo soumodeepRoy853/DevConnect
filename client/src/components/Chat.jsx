@@ -204,3 +204,4 @@ const Chat = ({ otherUserId, full = false, onBack = null }) => {
 };
 
 export default Chat;
+
