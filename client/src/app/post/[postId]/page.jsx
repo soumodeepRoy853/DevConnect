@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import RequireAuth from "../../components/RequireAuth";
-import CommentSection from "../../components/CommentSection";
-import api from "../../services/api";
+import RequireAuth from "../../../components/RequireAuth";
+import CommentSection from "../../../components/CommentSection";
+import api from "../../../services/api";
 
 const PostPage = () => {
   const { postId } = useParams();

@@ -4,9 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import RequireAuth from "../../components/RequireAuth";
 import api from "../../services/api";
-import Chat from "../../components/Chat";
+
 import { useAuth } from "../../context/authContext";
 import { FiSearch, FiEdit } from "react-icons/fi";
+import Chat from "../../components/Chat";
 
 const MessagesPage = () => {
   const searchParams = useSearchParams();

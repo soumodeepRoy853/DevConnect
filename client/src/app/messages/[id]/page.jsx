@@ -2,8 +2,9 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import RequireAuth from "../../components/RequireAuth";
-import Chat from "../../components/Chat";
+
+import Chat from "../../../components/Chat";
+import RequireAuth from "../../../components/RequireAuth";
 
 const ConversationPage = () => {
   const { id } = useParams();

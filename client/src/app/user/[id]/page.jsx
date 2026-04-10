@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import RequireAuth from "../../components/RequireAuth";
-import MessageButton from "../../components/MessageButton";
-import api from "../../services/api";
+import RequireAuth from "../../../components/RequireAuth";
+import MessageButton from "../../../components/MessageButton";
+import api from "../../../services/api";
 
 const UserProfilePage = () => {
   const { id } = useParams();
