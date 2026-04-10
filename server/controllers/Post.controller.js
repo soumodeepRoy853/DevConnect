@@ -108,7 +108,7 @@ export const deletePost = async (req, res) => {
   }
 };
 
-// Repost a public post
+//Repost a public post
 export const repost = async (req, res) => {
   try {
     const post = await repostService(req.params.postId, req.user.id);

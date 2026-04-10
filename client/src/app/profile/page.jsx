@@ -89,7 +89,7 @@ const ProfilePage = () => {
                 {profile.skills.map((skill, idx) => (
                   <span
                     key={idx}
-                    className="inline-block bg-blue-100 text-blue-700 px-2 py-1 text-sm rounded mr-2 mt-1"
+                    className="inline-block bg-primary-100 text-primary-700 px-2 py-1 text-sm rounded mr-2 mt-1"
                   >
                     {skill}
                   </span>
@@ -103,7 +103,7 @@ const ProfilePage = () => {
                   href={profile.github}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-blue-600 underline"
+                  className="text-primary-600 underline"
                 >
                   GitHub
                 </a>
@@ -113,7 +113,7 @@ const ProfilePage = () => {
                   href={profile.linkedin}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-blue-600 underline"
+                  className="text-primary-600 underline"
                 >
                   LinkedIn
                 </a>
@@ -123,7 +123,7 @@ const ProfilePage = () => {
                   href={profile.website}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-blue-600 underline"
+                  className="text-primary-600 underline"
                 >
                   Website
                 </a>

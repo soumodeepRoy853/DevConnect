@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import RequireAuth from "../../components/RequireAuth";
+import MessageButton from "../../components/MessageButton";
 import api from "../../services/api";
 
 const UserProfilePage = () => {
@@ -38,6 +39,9 @@ const UserProfilePage = () => {
       <h2 className="text-xl font-bold">{profile.user.name}</h2>
       <p className="text-gray-600">{profile.user.email}</p>
       <p className="mt-4 italic text-gray-800">{profile.bio}</p>
+      <div className="mt-4 flex justify-center">
+        <MessageButton otherUserId={profile.user._id} />
+      </div>
       <div className="mt-4 flex justify-center flex-wrap gap-2">
         {(profile.skills || []).map((skill, idx) => (
           <span key={idx} className="bg-indigo-100 text-indigo-700 px-2 py-1 text-sm rounded">

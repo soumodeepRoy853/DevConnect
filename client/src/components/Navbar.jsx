@@ -1,17 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "../context/authContext";
 import { Search, Menu, X } from "lucide-react";
 
 const Navbar = () => {
-  const { auth, logout } = useAuth();
+  const { auth, logout, unreadUsersCount } = useAuth();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // lock body scroll when mobile menu is open
+    try {
+      if (typeof window !== 'undefined') {
+        if (open) {
+          document.body.style.overflow = 'hidden';
+        } else {
+          document.body.style.overflow = '';
+        }
+      }
+    } catch (e) {}
+
+    return () => { try { document.body.style.overflow = ''; } catch (e) {} };
+  }, [open]);
 
   return (
     <>
-      <nav className="bg-blue-600 text-white py-3 px-6 shadow-md flex items-center justify-between">
+      <nav
+        className="relative z-50 text-white py-3 px-6 shadow-md flex items-center justify-between"
+        style={{ backgroundColor: 'var(--primary-600)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}
+      >
         <Link href="/" className="text-2xl font-bold tracking-wide">
           DevConnect
         </Link>
@@ -22,7 +40,7 @@ const Navbar = () => {
             onClick={() => setOpen((s) => !s)}
             aria-label="Toggle menu"
             aria-expanded={open}
-            className="md:hidden p-2 rounded hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-white"
+            className="md:hidden p-2 rounded hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-white"
           >
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -30,8 +48,10 @@ const Navbar = () => {
           {/* Desktop menu */}
           <div className="hidden md:flex gap-4 items-center">
             <Link href="/search" title="Search">
-              <Search className="w-5 h-5 hover:text-blue-200 transition duration-200" />
+              <Search className="w-5 h-5 hover:text-primary-200 transition duration-200" />
             </Link>
+
+            <Link href="/messages" className="hover:underline flex items-center gap-2">Messages {unreadUsersCount > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{unreadUsersCount}</span>}</Link>
 
             {auth.user ? (
               <>
@@ -56,9 +76,12 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Mobile menu */}
-      <div className={`${open ? "block" : "hidden"} md:hidden w-full bg-blue-600 px-6 pb-4`}>
-        <div className="flex flex-col gap-3 pt-3">
+      {/* Mobile menu (fixed overlay) */}
+      <div
+        className={`${open ? "block" : "hidden"} md:hidden fixed inset-0 z-40 px-6 pb-4 pt-16 overflow-auto`}
+        style={{ backgroundColor: 'var(--primary-600)' }}
+      >
+        <div className="flex flex-col gap-3">
           <Link href="/search" title="Search" onClick={() => setOpen(false)} className="flex items-center gap-2">
             <Search className="w-5 h-5" /> <span>Search</span>
           </Link>
@@ -66,6 +89,7 @@ const Navbar = () => {
           {auth.user ? (
             <>
               <Link href="/feed" className="hover:underline" onClick={() => setOpen(false)}>Home</Link>
+              <Link href="/messages" className="hover:underline flex items-center gap-2" onClick={() => setOpen(false)}>Messages {unreadUsersCount > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{unreadUsersCount}</span>}</Link>
               <Link href="/profile" className="hover:underline" onClick={() => setOpen(false)}>My Profile</Link>
               <Link href="/explore" className="hover:underline" onClick={() => setOpen(false)}>Discover</Link>
               <Link href="/edit-profile" className="hover:underline" onClick={() => setOpen(false)}>Edit</Link>

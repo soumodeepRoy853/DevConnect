@@ -52,9 +52,9 @@ const FollowButton = ({ userId, onFollowChange }) => {
       whileHover={{ scale: 1.05 }}
       disabled={actionLoading}
       className={`px-4 py-2 rounded font-semibold transition-all text-white ${
-        isFollowing
-          ? "bg-red-500 hover:bg-red-600"
-          : "bg-blue-500 hover:bg-blue-600"
+          isFollowing
+            ? "bg-red-500 hover:bg-red-600"
+            : "bg-primary-500 hover:bg-primary-600"
       } ${actionLoading ? "opacity-50 cursor-not-allowed" : ""}`}
     >
       {actionLoading ? "Please wait..." : isFollowing ? "Unfollow" : "Follow"}

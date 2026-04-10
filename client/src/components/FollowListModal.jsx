@@ -80,7 +80,7 @@ const FollowListModal = ({ title, users, onClose }) => {
                     <Link
                       href={`/user/${user._id}`}
                       onClick={onClose}
-                      className="font-semibold text-blue-600 hover:underline"
+                      className="font-semibold text-primary-600 hover:underline"
                     >
                       {user.name}
                     </Link>

@@ -20,6 +20,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y",
     },
+    lastSeen: {
+        type: Date,
+        default: null,
+    },
     followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"

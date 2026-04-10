@@ -59,7 +59,7 @@ const LoginPage = () => {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+          className="w-full bg-primary-600 text-white p-2 rounded hover:bg-primary-700"
         >
           Login
         </button>
@@ -67,7 +67,7 @@ const LoginPage = () => {
         <p className="text-center text-sm mt-4">
           Do not have an account?{" "}
           <span
-            className="text-blue-600 cursor-pointer"
+            className="text-primary-600 cursor-pointer"
             onClick={() => router.push("/register")}
           >
             Register

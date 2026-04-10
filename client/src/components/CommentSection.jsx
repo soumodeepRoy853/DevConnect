@@ -34,7 +34,7 @@ const CommentSection = ({ postId, comments }) => {
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-        <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 rounded">
+        <button onClick={handleAddComment} className="bg-primary-500 text-white px-4 rounded">
           Post
         </button>
       </div>

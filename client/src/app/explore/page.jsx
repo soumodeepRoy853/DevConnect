@@ -79,7 +79,7 @@ const ExplorePage = () => {
 
               <div className="flex flex-wrap justify-center gap-2 mt-2">
                 {profile.skills?.slice(0, 5).map((skill, idx) => (
-                  <span key={idx} className="bg-blue-100 text-blue-700 px-2 py-1 text-xs rounded">
+                  <span key={idx} className="bg-primary-100 text-primary-700 px-2 py-1 text-xs rounded">
                     {skill}
                   </span>
                 ))}
@@ -96,8 +96,8 @@ const ExplorePage = () => {
                   <button
                     onClick={() => handleFollow(userId)}
                     className={`text-sm px-3 py-1 rounded ${
-                      isFollowing ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-                    } text-white`}
+                        isFollowing ? "bg-gray-400 cursor-not-allowed" : "bg-primary-600 hover:bg-primary-700"
+                      } text-white`}
                     disabled={isFollowing}
                   >
                     {isFollowing ? "Following" : "Follow"}

@@ -53,10 +53,7 @@ export const getFeedPostsService = async (userId, pagination) => {
   const followers = Array.isArray(currentUser.followers)
     ? currentUser.followers
     : [];
-  // Build visibility-aware filter:
-  // - public posts (or posts missing visibility for backward compatibility)
-  // - posts by the current user (always visible)
-  // - posts with visibility 'followers' from users the current user follows
+
   const filter = {
     $or: [
       { visibility: "public" },
@@ -73,7 +70,7 @@ export const getFeedPostsService = async (userId, pagination) => {
       .populate("comments.user", ["name", "avatar"])
       .populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } });
 
-    // attach repost counts and viewer repost status
+    //attach repost counts and viewer repost status
     const plainPosts = posts.map((p) => p.toObject());
     const originalIds = [
       ...new Set(
@@ -119,7 +116,7 @@ export const getFeedPostsService = async (userId, pagination) => {
     Post.countDocuments(filter),
   ]);
 
-  // attach repost counts and viewer repost status for paginated results
+  //attach repost counts and viewer repost status for paginated results
   const plainPosts = posts.map((p) => p.toObject());
   const originalIds = [
     ...new Set(
@@ -162,7 +159,7 @@ export const getPostsByUserService = async (targetUserId, viewerId, pagination) 
 
   let filter;
 
-  // If the viewer is the target user, return all posts (including private)
+  //If the viewer is the target user, return all posts (including private)
   if (viewerId && targetUserId.toString() === viewerId.toString()) {
     filter = { user: targetUserId };
   } else {
@@ -184,7 +181,7 @@ export const getPostsByUserService = async (targetUserId, viewerId, pagination) 
       .populate("comments.user", ["name", "avatar"])
       .populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } });
 
-    // attach repost counts and viewer repost status
+    //attach repost counts and viewer repost status
     const plainPosts = posts.map((p) => p.toObject());
     const originalIds = [
       ...new Set(
@@ -230,7 +227,7 @@ export const getPostsByUserService = async (targetUserId, viewerId, pagination) 
     Post.countDocuments(filter),
   ]);
 
-  // attach repost counts and viewer repost status for paginated results
+  //attach repost counts and viewer repost status for paginated results
   const plainPosts = posts.map((p) => p.toObject());
   const originalIds = [
     ...new Set(
@@ -294,12 +291,12 @@ export const repostService = async (originalPostId, userId) => {
     throw createHttpError(404, "Post not found");
   }
 
-  // Only allow reposting of public posts (treat missing visibility as public)
+  //Only allow reposting of public posts (treat missing visibility as public)
   if (original.visibility && original.visibility !== "public") {
     throw createHttpError(403, "Cannot repost non-public post");
   }
 
-  // Prevent duplicate reposts by the same user
+  //Prevent duplicate reposts by the same user
   const alreadyReposted = await Post.findOne({ user: userId, repostOf: original._id });
   if (alreadyReposted) {
     throw createHttpError(409, "You have already reposted this post");

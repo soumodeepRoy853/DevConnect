@@ -27,14 +27,14 @@ const PostCard = ({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white shadow p-4 mb-4 rounded-md border border-gray-100"
+      className="bg-white shadow-sm p-4 mb-4 rounded-xl border border-gray-100 hover:shadow-lg transition transform hover:-translate-y-1"
     >
       {/* Author */}
       <div className="flex items-center mb-3">
         <img
           src={post.user?.avatar || "/default-avatar.svg"}
           alt="avatar"
-          className="w-10 h-10 rounded-full object-cover border mr-3"
+          className="w-12 h-12 rounded-full object-cover border mr-3"
         />
         <div>
           <h3 className="font-semibold text-gray-800">
@@ -51,11 +51,11 @@ const PostCard = ({
       {post.repostOf && post.repostOf.user ? (
         <div className="border rounded p-3 mb-3 bg-gray-50">
           <div className="flex items-center mb-2">
-            <img
-              src={post.repostOf.user?.avatar || "/default-avatar.svg"}
-              alt="avatar"
-              className="w-8 h-8 rounded-full object-cover border mr-3"
-            />
+              <img
+                src={post.repostOf.user?.avatar || "/default-avatar.svg"}
+                alt="avatar"
+                className="w-8 h-8 rounded-full object-cover border mr-3"
+              />
             <div>
               <h4 className="font-semibold text-gray-700">
                 {post.repostOf.user?.name || "Unknown"}
@@ -74,10 +74,10 @@ const PostCard = ({
 
           {post.repostOf.image && (
             <img
-              src={post.repostOf.image}
-              alt="original-post"
-              className="w-full rounded-lg mb-2 max-h-[300px] object-cover border"
-            />
+                src={post.repostOf.image}
+                alt="original-post"
+                className="w-full rounded-lg mb-2 max-h-[300px] object-cover border"
+              />
           )}
         </div>
       ) : (
@@ -91,7 +91,7 @@ const PostCard = ({
         <img
           src={post.image}
           alt="post"
-          className="w-full rounded-lg mb-3 max-h-[400px] object-cover border"
+          className="w-full rounded-xl mb-3 max-h-[500px] object-cover border"
         />
       )}
 
@@ -111,7 +111,7 @@ const PostCard = ({
               const originalId = post.repostOf && (post.repostOf._id || post.repostOf) ? (post.repostOf._id || post.repostOf) : post._id;
               onRepost(originalId, Boolean(post.isRepostedByViewer));
             }}
-            className={`flex items-center gap-1 transition ${post.isRepostedByViewer ? "text-green-600" : "hover:text-blue-600"}`}
+            className={`flex items-center gap-1 transition ${post.isRepostedByViewer ? "text-primary-600" : "hover:text-primary-600"}`}
             title={post.repostCount ? `${post.repostCount} repost(s)` : "Be the first to repost"}
           >
             <FaRetweet />

@@ -41,6 +41,7 @@ export const getMyProfileService = async (userId) => {
     "name",
     "email",
     "avatar",
+    "lastSeen",
   ]);
 
   if (!profile) {
@@ -51,7 +52,7 @@ export const getMyProfileService = async (userId) => {
 };
 
 export const getAllProfilesService = async () => {
-  return Profile.find().populate("user", ["name", "email", "avatar"]);
+  return Profile.find().populate("user", ["name", "email", "avatar", "lastSeen"]);
 };
 
 export const getProfileByIdService = async (userId) => {
@@ -61,6 +62,7 @@ export const getProfileByIdService = async (userId) => {
     "name",
     "email",
     "avatar",
+    "lastSeen",
   ]);
 
   if (!profile) {
