@@ -28,7 +28,7 @@ connectDb();
 
 // middleware
 app.use(express.json())
-const allowedOrigins = [process.env.CLIENT_URL || "http://localhost:3000", "https://dev-connect-jb8j.vercel.app"];
+const allowedOrigins = [process.env.CLIENT_URL || "http://localhost:3000", "https://dev-connect-jb8j.vercel.app"]; 
 app.use(
 	cors({
 		origin: allowedOrigins,
