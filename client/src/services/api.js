@@ -1,9 +1,10 @@
 import axios from "axios";
 
-const DEFAULT_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const DEFAULT_API = process.env.NEXT_PUBLIC_API_URL || "https://devconnect-opej.onrender.com/api";
 
 const api = axios.create({
   baseURL: DEFAULT_API,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },

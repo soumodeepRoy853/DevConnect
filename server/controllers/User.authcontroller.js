@@ -33,6 +33,12 @@ export const loginUser = async (req, res) => {
         const payload = validateLoginInput(req.body);
         const { token, user } = await loginUserService(payload);
 
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,     
+            sameSite: "none",   
+        });
+
         res.status(200).json({
             message: "Login successfully",
             token,
