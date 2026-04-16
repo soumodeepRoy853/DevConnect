@@ -14,6 +14,7 @@ import followRouter from './routes/follow.route.js';
 import searchRouter from './routes/search.routes.js';
 import uploadRouter from './routes/upload.route.js';
 import messageRouter from './routes/message.route.js';
+import communityRouter from './routes/community.route.js';
 import User from './models/User.model.js';
 import Message from './models/Message.model.js';
 
@@ -23,8 +24,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT;
 connectDb();
+
+app.set("trust proxy", 1);
 
 // middleware
 app.use(express.json())
@@ -45,6 +48,7 @@ app.use('/api/follow', followRouter);
 app.use('/api/search/', searchRouter);
 app.use("/api/upload", uploadRouter);
 app.use('/api/message', messageRouter);
+app.use('/api/community', communityRouter);
 
 app.use("/uploads", express.static("uploads"));
 
@@ -119,9 +123,15 @@ io.on('connection', (socket) => {
 				return;
 			}
 
-			const message = await Message.create({ sender: senderId, recipient: recipientId, text });
-			io.to(recipientId.toString()).emit('new_message', message);
-			io.to(senderId.toString()).emit('new_message', message);
+				const message = await Message.create({ sender: senderId, recipient: recipientId, text });
+
+				if (onlineUsers.has(String(recipientId))) {
+					message.deliveredAt = new Date();
+					await message.save();
+				}
+
+				io.to(recipientId.toString()).emit('new_message', message);
+				io.to(senderId.toString()).emit('new_message', message);
 		} catch (err) {
 			console.error('private_message error', err);
 		}

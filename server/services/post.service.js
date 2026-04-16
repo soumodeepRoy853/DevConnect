@@ -41,7 +41,7 @@ export const getFeedPostsService = async (userId, pagination) => {
   ensureObjectId(userId, "Invalid user ID.");
 
   const currentUser = await User.findById(userId).select(
-    "following followers"
+    "following followers savedPosts"
   );
   if (!currentUser) {
     throw createHttpError(404, "User not found");
@@ -53,6 +53,8 @@ export const getFeedPostsService = async (userId, pagination) => {
   const followers = Array.isArray(currentUser.followers)
     ? currentUser.followers
     : [];
+
+  const savedSet = new Set((currentUser.savedPosts || []).map((id) => String(id)));
 
   const filter = {
     $or: [
@@ -97,6 +99,7 @@ export const getFeedPostsService = async (userId, pagination) => {
         const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
         pp.repostCount = countsMap[orig] || 0;
         pp.isRepostedByViewer = viewerSet.has(orig);
+        pp.isSavedByViewer = savedSet.has(String(pp._id));
       });
     }
 
@@ -143,6 +146,7 @@ export const getFeedPostsService = async (userId, pagination) => {
       const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
       pp.repostCount = countsMap[orig] || 0;
       pp.isRepostedByViewer = viewerSet.has(orig);
+      pp.isSavedByViewer = savedSet.has(String(pp._id));
     });
   }
 
@@ -156,6 +160,11 @@ export const getPostsByUserService = async (targetUserId, viewerId, pagination) 
   if (!targetUser) {
     throw createHttpError(404, "User not found");
   }
+
+  const viewerSaved = viewerId
+    ? await User.findById(viewerId).select("savedPosts").lean()
+    : null;
+  const viewerSavedSet = new Set((viewerSaved?.savedPosts || []).map((id) => String(id)));
 
   let filter;
 
@@ -208,6 +217,7 @@ export const getPostsByUserService = async (targetUserId, viewerId, pagination) 
         const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
         pp.repostCount = countsMap[orig] || 0;
         pp.isRepostedByViewer = viewerSet.has(orig);
+        pp.isSavedByViewer = viewerSavedSet.has(String(pp._id));
       });
     }
 
@@ -254,10 +264,73 @@ export const getPostsByUserService = async (targetUserId, viewerId, pagination) 
       const orig = String(pp.repostOf ? (pp.repostOf._id || pp.repostOf) : pp._id);
       pp.repostCount = countsMap[orig] || 0;
       pp.isRepostedByViewer = viewerSet.has(orig);
+      pp.isSavedByViewer = viewerSavedSet.has(String(pp._id));
     });
   }
 
   return { posts: plainPosts, pagination: buildPaginationMeta({ page, limit, total }) };
+};
+
+export const toggleSavePostService = async (postId, userId) => {
+  ensureObjectId(postId, "Invalid post ID.");
+  ensureObjectId(userId, "Invalid user ID.");
+
+  const post = await Post.findById(postId);
+  if (!post) throw createHttpError(404, "Post not found");
+
+  const user = await User.findById(userId).select("savedPosts");
+  if (!user) throw createHttpError(404, "User not found");
+
+  const alreadySaved = (user.savedPosts || []).some(
+    (id) => id.toString() === postId.toString()
+  );
+
+  if (alreadySaved) {
+    user.savedPosts = user.savedPosts.filter((id) => id.toString() !== postId.toString());
+  } else {
+    user.savedPosts.push(postId);
+  }
+
+  await user.save();
+  return { saved: !alreadySaved };
+};
+
+export const getSavedPostsService = async (userId) => {
+  ensureObjectId(userId, "Invalid user ID.");
+  const user = await User.findById(userId).select("savedPosts");
+  if (!user) throw createHttpError(404, "User not found");
+
+  const savedIds = (user.savedPosts || []).map((id) => id.toString());
+  if (savedIds.length === 0) return [];
+
+  const posts = await Post.find({ _id: { $in: savedIds } })
+    .sort({ createdAt: -1 })
+    .populate("user", ["name", "avatar"])
+    .populate("comments.user", ["name", "avatar"])
+    .populate({ path: "repostOf", populate: { path: "user", select: ["name", "avatar"] } });
+
+  const plainPosts = posts.map((p) => ({ ...p.toObject(), isSavedByViewer: true }));
+  return plainPosts;
+};
+
+export const updatePostService = async (postId, userId, payload) => {
+  ensureObjectId(postId, "Invalid post ID.");
+  ensureObjectId(userId, "Invalid user ID.");
+
+  const post = await Post.findById(postId);
+  if (!post) throw createHttpError(404, "Post not found");
+  if (String(post.user) !== String(userId)) {
+    throw createHttpError(403, "Not allowed to edit this post");
+  }
+
+  if (payload.text != null) post.text = payload.text;
+  if (payload.visibility) post.visibility = payload.visibility;
+  if (payload.image != null) post.image = payload.image;
+  if (payload.removeImage) post.image = "";
+
+  const updated = await post.save();
+  await updated.populate("user", ["name", "avatar"]);
+  return updated;
 };
 
 export const toggleLikeService = async (postId, userId) => {

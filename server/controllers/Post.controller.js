@@ -7,10 +7,14 @@ import {
   toggleLikeService,
   repostService,
   unrepostService,
+  toggleSavePostService,
+  getSavedPostsService,
+  updatePostService,
 } from "../services/post.service.js";
 import {
   validateCommentInput,
   validateCreatePostInput,
+  validateUpdatePostInput,
 } from "../validators/post.validator.js";
 
 //Create post
@@ -123,6 +127,37 @@ export const unrepost = async (req, res) => {
   try {
     const repostId = await unrepostService(req.params.postId, req.user.id);
     res.status(200).json({ repostId });
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
+  }
+};
+
+export const toggleSavePost = async (req, res) => {
+  try {
+    const result = await toggleSavePostService(req.params.postId, req.user.id);
+    res.status(200).json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
+  }
+};
+
+export const getSavedPosts = async (req, res) => {
+  try {
+    const posts = await getSavedPostsService(req.user.id);
+    res.status(200).json({ posts });
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Server error" });
+  }
+};
+
+export const updatePost = async (req, res) => {
+  try {
+    const payload = validateUpdatePostInput(req.body);
+    const post = await updatePostService(req.params.postId, req.user.id, payload);
+    res.status(200).json({ post });
   } catch (err) {
     const status = err.status || 500;
     res.status(status).json({ message: err.message || "Server error" });

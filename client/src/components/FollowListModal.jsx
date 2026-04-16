@@ -75,6 +75,10 @@ const FollowListModal = ({ title, users, onClose }) => {
                     src={user.avatar || "/default-avatar.svg"}
                     alt={user.name}
                     className="w-8 h-8 rounded-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/default-avatar.svg";
+                    }}
                   />
                   <div>
                     <Link

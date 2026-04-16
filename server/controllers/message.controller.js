@@ -1,4 +1,4 @@
-import { saveMessage, getConversation, getConversations, markConversationRead } from '../services/message.service.js';
+import { saveMessage, getConversation, getConversations, markConversationRead, deleteConversation } from '../services/message.service.js';
 import User from '../models/User.model.js';
 
 export const sendMessage = async (req, res) => {
@@ -41,6 +41,18 @@ export const getConversationsController = async (req, res) => {
     const userId = req.user.id;
     const convs = await getConversations(userId);
     res.status(200).json(convs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const deleteConversationController = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const otherId = req.params.id;
+    await deleteConversation(userId, otherId);
+    res.status(200).json({ message: 'Conversation deleted' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

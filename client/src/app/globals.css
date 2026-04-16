@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 html,
@@ -7,7 +8,7 @@ body {
 
 body {
   background-color: #f9fafb;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #111827;
@@ -30,7 +31,7 @@ body {
 }
 
 body {
-  background: linear-gradient(180deg, rgba(67,56,202,0.03) 0%, rgba(112,106,212,0.02) 100%), #f9fafb;
+  background: radial-gradient(1200px 400px at 50% -200px, rgba(67,56,202,0.08), transparent 60%), #f6f3f4;
 }
 
 .btn-primary {
@@ -56,9 +57,9 @@ body {
 .text-primary-600 { color: var(--primary-600) !important; }
 .text-primary-700 { color: var(--primary-700) !important; }
 .text-primary-500 { color: var(--primary-500) !important; }
-.bg-primary-100 { color: var(--primary-100) !important; }
 .bg-primary-100 { background-color: var(--primary-100) !important; }
-.bg-primary-50 { color: var(--primary-50) !important; }
+.text-primary-100 { color: var(--primary-100) !important; }
+.text-primary-50 { color: var(--primary-50) !important; }
 
 .hover\:bg-primary-700:hover { background-color: var(--primary-700) !important; }
 .hover\:bg-primary-600:hover { background-color: var(--primary-600) !important; }

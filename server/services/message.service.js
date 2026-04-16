@@ -3,7 +3,7 @@ import User from '../models/User.model.js';
 import mongoose from 'mongoose';
 
 export const saveMessage = async (sender, recipient, text) => {
-  const m = new Message({ sender, recipient, text });
+  const m = new Message({ sender, recipient, text, deliveredAt: null, readAt: null });
   return m.save();
 };
 
@@ -17,7 +17,11 @@ export const getConversation = async (userA, userB) => {
 };
 
 export const markConversationRead = async (userA, userB) => {
-  return Message.updateMany({ sender: userB, recipient: userA, read: false }, { $set: { read: true } });
+  const now = new Date();
+  return Message.updateMany(
+    { sender: userB, recipient: userA, read: false },
+    { $set: { read: true, readAt: now } }
+  );
 };
 
 export const getConversations = async (userId) => {
@@ -54,4 +58,13 @@ export const getConversations = async (userId) => {
   }
 
   return result;
+};
+
+export const deleteConversation = async (userA, userB) => {
+  return Message.deleteMany({
+    $or: [
+      { sender: userA, recipient: userB },
+      { sender: userB, recipient: userA }
+    ]
+  });
 };

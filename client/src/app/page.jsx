@@ -1,16 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "../context/authContext";
+import { Plus } from "lucide-react";
 import RequireAuth from "../components/RequireAuth";
 import CreatePost from "../components/CreatePost";
+import Loader from "../components/Loader";
 import PostCard from "../components/PostCard";
+import MobileBottomNav from "../components/MobileBottomNav";
 import api from "../services/api";
 
 const DashboardPage = () => {
-  const { auth, logout } = useAuth();
-  const router = useRouter();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +17,8 @@ const DashboardPage = () => {
     setLoading(true);
     try {
       const res = await api.get("/post/feed");
-      setPosts(res.data.posts || []);
+      const nextPosts = res.data.posts || [];
+      setPosts(nextPosts.slice().reverse());
     } catch {
       setPosts([]);
     } finally {
@@ -27,14 +27,22 @@ const DashboardPage = () => {
   };
 
   useEffect(() => {
-    if (auth?.token) {
-      fetchPosts();
-    }
-  }, [auth?.token]);
+    fetchPosts();
+  }, []);
 
   const handlePostCreated = (newPost) => {
     const safe = { repostCount: 0, isRepostedByViewer: false, ...newPost };
     setPosts((prev) => [safe, ...prev]);
+  };
+
+  const handleDelete = async (postId) => {
+    if (!confirm("Are you sure?")) return;
+    try {
+      await api.delete(`/post/${postId}`);
+      setPosts((prev) => prev.filter((p) => p._id !== postId));
+    } catch {
+      // No-op
+    }
   };
 
   const toggleLike = async (postId) => {
@@ -104,98 +112,78 @@ const DashboardPage = () => {
     }
   };
 
+  const handleSave = async (postId) => {
+    try {
+      const res = await api.put(`/post/save/${postId}`);
+      const saved = res.data.saved;
+      setPosts((prev) =>
+        prev.map((p) =>
+          p._id === postId ? { ...p, isSavedByViewer: saved } : p
+        )
+      );
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to save post.");
+    }
+  };
+
+  const handleEdit = async (postId, payload) => {
+    const cleaned = {
+      text: payload.text,
+      image: payload.image,
+      removeImage: payload.removeImage,
+    };
+    const res = await api.put(`/post/${postId}`, cleaned);
+    const updated = res.data.post;
+    setPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, ...updated } : p)));
+  };
+
+  const focusComposer = () => {
+    const input = document.getElementById("create-post-input");
+    if (input) {
+      input.focus();
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="md:grid md:grid-cols-4 gap-6">
-          <aside className="hidden md:block md:col-span-1">
-            <div className="bg-white rounded-lg shadow p-4 sticky top-24">
-              <div className="flex items-center gap-3 mb-4">
-                <img src={auth?.user?.avatar || '/default-avatar.svg'} alt="me" className="w-12 h-12 rounded-full border" />
-                <div>
-                  <div className="font-semibold">{auth?.user?.name}</div>
-                  <div className="text-xs text-gray-500">{auth?.user?.title || 'Member'}</div>
-                </div>
-              </div>
+    <div className="min-h-screen px-4 pb-28 pt-6">
+      <div className="mx-auto w-full max-w-xl">
+        <CreatePost onPostCreated={handlePostCreated} />
 
-              <nav className="space-y-2">
-                <button onClick={() => router.push('/feed')} className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50">Home</button>
-                <button onClick={() => router.push('/explore')} className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50">Explore</button>
-                <button onClick={() => router.push('/saved')} className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50">Saved</button>
-                <button onClick={() => router.push('/settings')} className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50">Settings</button>
-              </nav>
-
-              <div className="mt-4">
-                <button onClick={() => router.push('/')} className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700">Create Post</button>
-              </div>
+        <div className="space-y-4">
+          {loading ? (
+            <div className="py-6">
+              <Loader label="Loading" />
             </div>
-          </aside>
-
-          <main className="md:col-span-2">
-            <div className="bg-white rounded-lg shadow p-6 text-center mb-6">
-              <h1 className="text-2xl font-bold text-gray-800 mb-1">
-                Hello, {auth?.user?.name}
-              </h1>
-              <p className="text-gray-600">
-                Logged in as <strong>{auth?.user?.email}</strong>
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                <button
-                  onClick={() => router.push("/create-profile")}
-                  className="bg-primary-600 text-white py-2 rounded hover:bg-primary-700"
-                >
-                  Create Profile
-                </button>
-                <button
-                  onClick={() => router.push("/profile")}
-                  className="bg-primary-600 text-white py-2 rounded hover:bg-primary-700"
-                >
-                  My Profile
-                </button>
-                <button
-                  onClick={() => router.push("/explore")}
-                  className="bg-primary-600 text-white py-2 rounded hover:bg-primary-700"
-                >
-                  Discover
-                </button>
-                <button
-                  onClick={logout}
-                  className="bg-red-600 text-white py-2 rounded hover:bg-red-700"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-
-            <CreatePost onPostCreated={handlePostCreated} />
-
-            <div className="mt-8 space-y-4">
-              {loading ? (
-                <p className="text-center text-gray-500">Loading posts...</p>
-              ) : posts.length === 0 ? (
-                <p className="text-center text-gray-500">No posts yet.</p>
-              ) : (
-                posts.map((post) => (
-                  <PostCard
-                    key={post._id}
-                    post={post}
-                    onLike={toggleLike}
-                    onCommentSubmit={addComment}
-                    onRepost={handleRepost}
-                  />
-                ))
-              )}
-            </div>
-          </main>
-
-          <aside className="hidden md:block md:col-span-1">
-            <div className="bg-white rounded-lg shadow p-4 sticky top-24">
-              <h3 className="font-semibold mb-2">Highlights</h3>
-              <p className="text-sm text-gray-600">Suggestions and trending posts will appear here.</p>
-            </div>
-          </aside>
+          ) : posts.length === 0 ? (
+            <p className="text-center text-sm text-gray-500">No posts yet.</p>
+          ) : (
+            posts.map((post) => (
+              <PostCard
+                key={post._id}
+                post={post}
+                onLike={toggleLike}
+                onCommentSubmit={addComment}
+                onRepost={handleRepost}
+                onDelete={handleDelete}
+                onSave={handleSave}
+                onEdit={handleEdit}
+              />
+            ))
+          )}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={focusComposer}
+        aria-label="Create new post"
+        className="md:hidden fixed bottom-20 right-5 z-40 w-12 h-12 rounded-full bg-primary-600 text-white shadow-[0_12px_28px_rgba(67,56,202,0.35)] flex items-center justify-center"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <MobileBottomNav />
     </div>
   );
 };

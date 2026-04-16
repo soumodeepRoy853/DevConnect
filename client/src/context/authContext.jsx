@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { io } from "socket.io-client";
 import api from "../services/api";
 import { useRouter } from "next/navigation";
@@ -15,12 +16,22 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const router = useRouter();
 
-  const [auth, setAuth] = useState({
-    user: null,
-    token: null,
+  const [auth, setAuth] = useState(() => {
+    if (typeof window === "undefined") {
+      return { user: null, token: null };
+    }
+    const storedAuth = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (storedAuth) {
+      try {
+        return JSON.parse(storedAuth);
+      } catch {
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    }
+    return { user: null, token: null };
   });
 
-  const [isAuthReady, setIsAuthReady] = useState(false); 
+  const [isAuthReady, setIsAuthReady] = useState(() => typeof window !== "undefined");
   const [socket, setSocket] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -39,6 +50,23 @@ export const AuthProvider = ({ children }) => {
     }
     setIsAuthReady(true);
   }, []);
+
+  // Sync with NextAuth session (OAuth providers)
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.token) {
+      const sUser = session.user || {};
+      const mapped = {
+        id: sUser.id || sUser._id || sUser.id,
+        name: sUser.name,
+        email: sUser.email,
+        avatar: sUser.avatar || sUser.image || null,
+      };
+      setAuth({ user: mapped, token: session.token });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, status]);
 
   // Save to localStorage on change
   useEffect(() => {
@@ -86,12 +114,53 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const DEFAULT_AVATAR = "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
+
+  const refreshUser = useCallback(async () => {
+    if (!auth?.token) return;
+    try {
+      const res = await api.get('/user/all-users');
+      const user = res.data?.user;
+      if (!user) return;
+
+      let resolvedAvatar = user.avatar;
+      if (!resolvedAvatar || resolvedAvatar === DEFAULT_AVATAR) {
+        try {
+          const profileRes = await api.get('/profile/my');
+          const profileAvatar = profileRes.data?.profile?.avatar;
+          if (profileAvatar) resolvedAvatar = profileAvatar;
+        } catch (err) {
+          // no profile yet
+        }
+      }
+
+      setAuth((prev) => {
+        const mapped = {
+          id: user._id || user.id || prev?.user?.id,
+          name: user.name,
+          email: user.email,
+          avatar: resolvedAvatar || user.avatar,
+        };
+        return { ...prev, user: { ...prev.user, ...mapped } };
+      });
+    } catch (err) {
+      console.error('refreshUser error', err);
+    }
+  }, [auth?.token]);
+
   // Fetch conversations once when auth is ready / user is present
   useEffect(() => {
     if (!isAuthReady) return;
     if (auth?.user) fetchConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthReady, auth?.user]);
+
+  // Refresh user details after auth is ready to keep avatar/profile current
+  useEffect(() => {
+    if (!isAuthReady || !auth?.token) return;
+    refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthReady, auth?.token, refreshUser]);
 
   // listen to new_message and update conversations
   useEffect(() => {
@@ -232,8 +301,8 @@ export const AuthProvider = ({ children }) => {
   const unreadUsersCount = useMemo(() => (conversations || []).filter(c => c.unreadCount > 0).length, [conversations]);
 
   const value = useMemo(
-    () => ({ auth, setAuth, logout, isAuthReady, socket, conversations, unreadUsersCount, markConversationRead, fetchConversations, onlineUsers, lastSeenMap }),
-    [auth, isAuthReady, socket, conversations, unreadUsersCount, onlineUsers, lastSeenMap]
+    () => ({ auth, setAuth, logout, isAuthReady, socket, conversations, unreadUsersCount, markConversationRead, fetchConversations, refreshUser, onlineUsers, lastSeenMap }),
+    [auth, isAuthReady, socket, conversations, unreadUsersCount, refreshUser, onlineUsers, lastSeenMap]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

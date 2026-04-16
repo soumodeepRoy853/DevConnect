@@ -34,5 +34,21 @@ export const createPostUploadMiddleware = () =>
 export const createAvatarUploadMiddleware = () =>
   multer({ storage: createStorage(AVATAR_UPLOAD_DIR) });
 
+const getPublicBaseUrl = (req) => {
+  const envBase = process.env.PUBLIC_BASE_URL;
+  if (envBase) return envBase.replace(/\/$/, "");
+
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const proto = Array.isArray(forwardedProto)
+    ? forwardedProto[0]
+    : forwardedProto || req.protocol;
+  const host = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : forwardedHost || req.get("host");
+
+  return `${proto}://${host}`;
+};
+
 export const buildFileUrl = (req, filePath) =>
-  `${req.protocol}://${req.get("host")}${filePath}`;
+  `${getPublicBaseUrl(req)}${filePath}`;

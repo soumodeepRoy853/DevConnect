@@ -5,6 +5,8 @@ const messageSchema = new mongoose.Schema({
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   text: { type: String, required: true },
   read: { type: Boolean, default: false },
+  deliveredAt: { type: Date, default: null },
+  readAt: { type: Date, default: null },
 }, { timestamps: true });
 
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);

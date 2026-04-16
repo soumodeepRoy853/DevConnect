@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 
 import PostCard from "../../components/PostCard";
 import RequireAuth from "../../components/RequireAuth";
 import CreatePost from "../../components/CreatePost";
+import Loader from "../../components/Loader";
+import MobileBottomNav from "../../components/MobileBottomNav";
 import api from "../../services/api";
 
 const FeedPage = () => {
@@ -28,8 +31,6 @@ const FeedPage = () => {
     getPosts();
   }, []);
 
-  const addPostToFeed = (post) => setPosts((prev) => [post, ...prev]);
-  
   // ensure newly created posts have repost metadata defaults
   const addPostSafe = (post) => {
     const safe = { repostCount: 0, isRepostedByViewer: false, ...post };
@@ -114,26 +115,78 @@ const FeedPage = () => {
     }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto mt-8 px-4">
-      <CreatePost onPostCreated={addPostSafe} />
+  const handleSave = async (postId) => {
+    try {
+      const res = await api.put(`/post/save/${postId}`);
+      const saved = res.data.saved;
+      setPosts((prev) =>
+        prev.map((p) =>
+          p._id === postId ? { ...p, isSavedByViewer: saved } : p
+        )
+      );
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to save post.");
+    }
+  };
 
-      {loading ? (
-        <p>Loading posts...</p>
-      ) : posts.length === 0 ? (
-        <p>No posts yet.</p>
-      ) : (
-        posts.map((post) => (
-          <PostCard
-            key={post._id}
-            post={post}
-            onDelete={handleDelete}
-            onLike={toggleLike}
+  const handleEdit = async (postId, payload) => {
+    const cleaned = {
+      text: payload.text,
+      image: payload.image,
+      removeImage: payload.removeImage,
+    };
+    const res = await api.put(`/post/${postId}`, cleaned);
+    const updated = res.data.post;
+    setPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, ...updated } : p)));
+  };
+
+  const focusComposer = () => {
+    const input = document.getElementById("create-post-input");
+    if (input) {
+      input.focus();
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  return (
+    <div className="min-h-screen px-4 pb-28 pt-6">
+      <div className="mx-auto w-full max-w-xl">
+        <CreatePost onPostCreated={addPostSafe} />
+
+        <div className="space-y-4">
+          {loading ? (
+            <div className="py-6">
+              <Loader label="Loading" />
+            </div>
+          ) : posts.length === 0 ? (
+            <p className="text-center text-sm text-gray-500">No posts yet.</p>
+          ) : (
+            posts.map((post) => (
+              <PostCard
+                key={post._id}
+                post={post}
+                onDelete={handleDelete}
+                onLike={toggleLike}
                 onCommentSubmit={addComment}
                 onRepost={handleRepost}
-          />
-        ))
-      )}
+                onSave={handleSave}
+                onEdit={handleEdit}
+              />
+            ))
+          )}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={focusComposer}
+        aria-label="Create new post"
+        className="md:hidden fixed bottom-20 right-5 z-40 w-12 h-12 rounded-full bg-primary-600 text-white shadow-[0_12px_28px_rgba(67,56,202,0.35)] flex items-center justify-center"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <MobileBottomNav />
     </div>
   );
 };

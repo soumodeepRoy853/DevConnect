@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import RequireAuth from "../../../components/RequireAuth";
+import Loader from "../../../components/Loader";
 import api from "../../../services/api";
 
 const ProfileViewPage = () => {
@@ -26,7 +27,13 @@ const ProfileViewPage = () => {
   }, [id]);
 
   if (error) return <div className="text-center mt-20 text-red-600">{error}</div>;
-  if (!profile) return <div className="text-center mt-20">Loading profile...</div>;
+  if (!profile) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <Loader label="Loading" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-10 text-center">
@@ -34,6 +41,10 @@ const ProfileViewPage = () => {
         src={profile.avatar || "/default-avatar.svg"}
         alt="avatar"
         className="w-28 h-28 rounded-full mx-auto mb-4 border"
+        onError={(e) => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = "/default-avatar.svg";
+        }}
       />
       <h2 className="text-xl font-bold">{profile.user.name}</h2>
       <p className="text-gray-600">{profile.user.email}</p>

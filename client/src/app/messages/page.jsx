@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import RequireAuth from "../../components/RequireAuth";
+import MobileBottomNav from "../../components/MobileBottomNav";
 import api from "../../services/api";
 
 import { useAuth } from "../../context/authContext";
-import { FiSearch, FiEdit } from "react-icons/fi";
+import { Search, Edit2, MessageSquare, Users, Settings, UserPlus } from "lucide-react";
 import Chat from "../../components/Chat";
 
 const MessagesPage = () => {
@@ -14,12 +15,15 @@ const MessagesPage = () => {
   const initialUid = searchParams ? searchParams.get("u") : null;
 
   const [selectedUser, setSelectedUser] = useState(null);
-  const { conversations, auth, markConversationRead } = useAuth();
+  const { conversations, auth, markConversationRead, onlineUsers, lastSeenMap, fetchConversations } = useAuth();
   const [following, setFollowing] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [query, setQuery] = useState("");
-  const [activeView, setActiveView] = useState("conversations");
+  const [activeView, setActiveView] = useState("conversations"); // 'conversations' | 'contacts' | 'settings'
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const router = useRouter();
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -42,18 +46,12 @@ const MessagesPage = () => {
 
     return () => {
       mounted = false;
-      setSelectedUser(null); // ensure message box closes when leaving
+      setSelectedUser(null);
     };
   }, [initialUid]);
 
-  // if no ?u param, auto-open the most recent conversation (if any)
-  // Do not auto-open conversations. If `?u=` is present we'll open that user.
-  // Otherwise show the follow/following lists and open chat only when a user is clicked.
-
-  // when no selected conversation, load follow/following lists and dedupe
   useEffect(() => {
-    if (initialUid) return; // if we're opening a specific user, skip loading lists
-    if (selectedUser) return; // if a chat is open, don't overwrite UI
+    if (initialUid || selectedUser) return;
     let mounted = true;
     const fetchConnections = async () => {
       try {
@@ -75,141 +73,326 @@ const MessagesPage = () => {
     return () => { mounted = false; };
   }, [initialUid, selectedUser, auth?.user]);
 
+  const getTimeLabel = (dStr) => {
+    if (!dStr) return "";
+    const d = new Date(dStr);
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000 / 60);
+    if (diff < 60) return diff === 0 ? "NOW" : `${diff}M AGO`;
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return `${hours}H AGO`;
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "YESTERDAY";
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase();
+  };
+
+  const getGroupedContacts = () => {
+    const contacts = [...(following || []), ...(followers || [])];
+    const filtered = contacts.filter(u => {
+      if (!query) return true;
+      const q = query.toLowerCase();
+      return (u.name || "").toLowerCase().includes(q);
+    });
+    
+    // Sort alphabetically
+    filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+    const grouped = {};
+    filtered.forEach(c => {
+      const firstLetter = (c.name || "#").charAt(0).toUpperCase();
+      if (!grouped[firstLetter]) grouped[firstLetter] = [];
+      grouped[firstLetter].push(c);
+    });
+    return grouped;
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectMode(false);
+    setSelectedIds([]);
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selectedIds.length} conversation(s)?`)) return;
+    try {
+      await Promise.all(selectedIds.map((id) => api.delete(`/message/conversation/${id}`)));
+      await fetchConversations();
+      clearSelection();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete conversations.");
+    }
+  };
+
   return (
-    <div className="min-h-screen">
-      <div className="md:grid md:grid-cols-4 gap-6 min-h-[calc(100vh-2rem)] p-4">
-        {/* Left nav - desktop only */}
-        <aside className="hidden md:block md:col-span-1">
-          <div className="bg-white rounded-lg shadow p-4 sticky top-5">
-            <div className="flex items-center gap-3 mb-4">
-              <img src={auth?.user?.avatar || '/default-avatar.svg'} alt="me" className="w-12 h-12 rounded-full border" />
-              <div>
-                <div className="font-semibold">{auth?.user?.name}</div>
-                <div className="text-xs text-gray-500">Online</div>
+    <div className={`min-h-screen bg-[#fafafa] flex flex-col ${selectedUser ? 'md:bg-transparent' : ''}`}>
+      <div className={`flex-1 w-full max-w-[1200px] mx-auto ${selectedUser ? 'md:grid md:grid-cols-3' : 'md:grid md:grid-cols-1 lg:grid-cols-[1fr_2fr] lg:gap-8'} md:p-6 lg:p-8`}>
+        
+        {/* Left/Main List View */}
+        <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} flex-col w-full h-full max-w-full md:max-w-md lg:max-w-[480px] bg-[#fafafa] md:bg-white md:rounded-[32px] md:shadow-sm md:border md:border-gray-100 overflow-hidden relative pb-[80px] md:pb-0 mx-auto`}>
+          
+          {/* Header */}
+          <div className="px-5 pt-5 pb-3 bg-[#fafafa] md:bg-white z-10">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <h1 className="text-[22px] font-bold text-gray-900">
+                  {activeView === 'conversations' ? 'Messages' : 'Contacts'}
+                </h1>
+              </div>
+              <div className="flex items-center gap-2">
+                {activeView === "conversations" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectMode) return clearSelection();
+                      setSelectMode(true);
+                    }}
+                    className="text-xs font-semibold text-gray-500 hover:text-primary-600"
+                  >
+                    {selectMode ? "Cancel" : "Select"}
+                  </button>
+                )}
+                <button
+                  className="text-[#3e53d7] hover:bg-blue-50 p-2 rounded-full transition-colors"
+                  onClick={() => searchInputRef.current?.focus()}
+                  aria-label="Focus search"
+                >
+                  <Search className="w-[22px] h-[22px]" strokeWidth={2.5} />
+                </button>
               </div>
             </div>
 
-            <nav className="space-y-2">
-              <button
-                onClick={async () => {
-                  setActiveView("conversations");
-                  // open the most recent conversation if any
-                  if (conversations && conversations.length > 0) {
-                    const c = conversations[0];
-                    setSelectedUser({ _id: String(c.user._id), name: c.user?.name, avatar: c.user?.avatar });
-                    try { await markConversationRead(c.user._id); } catch (e) {}
-                  }
-                }}
-                className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50"
-              >
-                Chats
-              </button>
-              <button
-                onClick={() => setActiveView("contacts")}
-                className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50"
-              >
-                Contacts
-              </button>
-            </nav>
-
-            <div className="mt-4">
-              <button onClick={() => { setActiveView('contacts'); setSelectedUser(null); }} className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700">New Message</button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Conversations list */}
-        <section className={`${selectedUser ? 'hidden md:block' : 'block'} md:col-span-1 bg-white rounded-lg shadow p-3`}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex-1">
-              <div className="text-lg font-semibold">Messages</div>
-              <div className="text-sm text-gray-500">Conversations</div>
-            </div>
-            <button className="p-2 rounded hover:bg-gray-50"><FiEdit /></button>
-          </div>
-
-          <div className="mb-3">
+            {/* Search Input */}
             <div className="relative">
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search conversations..." className="w-full border rounded-full px-3 py-2 pr-10" />
-              <div className="absolute right-2 top-2 text-gray-400"><FiSearch /></div>
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <Search className="w-[18px] h-[18px] text-gray-500" />
+              </div>
+              <input 
+                value={query} 
+                onChange={(e) => setQuery(e.target.value)} 
+                placeholder={`Search ${activeView}...`} 
+                ref={searchInputRef}
+                className="w-full bg-[#f4f4f5] rounded-2xl py-3.5 pl-11 pr-4 text-[15px] outline-none placeholder:text-gray-500"
+              />
             </div>
           </div>
 
-          <div className="space-y-2 overflow-auto max-h-[60vh]">
-            {activeView === "conversations" && (conversations || []).filter(c => {
-              if (!query) return true;
-              const q = query.toLowerCase();
-              return (c.user?.name || "").toLowerCase().includes(q) || (c.lastMessage?.text || "").toLowerCase().includes(q);
-            }).map((c) => (
-              <button
-                key={String(c.user._id)}
-                onClick={async () => {
-                  const uid = String(c.user._id);
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                    // navigate to full-screen chat on mobile (same tab)
-                    router.push(`/messages?u=${uid}`);
-                    return;
-                  }
-                  setSelectedUser({ _id: uid, name: c.user?.name, avatar: c.user?.avatar });
-                  try { await markConversationRead(c.user._id); } catch (e) {}
-                }}
-                className={`w-full text-left flex items-center gap-3 p-2 rounded ${selectedUser && String(selectedUser._id) === String(c.user._id) ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
-              >
-                <img src={c.user?.avatar || '/default-avatar.svg'} alt={c.user?.name} className="w-12 h-12 rounded-full" />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold text-sm">{c.user?.name}</div>
-                    <div className="text-xs text-gray-400">{c.lastMessage ? new Date(c.lastMessage.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}</div>
-                  </div>
-                  <div className="text-xs text-gray-500 truncate">{c.lastMessage?.text || 'No messages yet'}</div>
-                </div>
-                {c.unreadCount > 0 && <div className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">{c.unreadCount}</div>}
-              </button>
-            ))}
-
-            {activeView === "contacts" && (() => {
-              const contacts = [...(following || []), ...(followers || [])];
-              return contacts.filter(u => {
-                if (!query) return true;
-                const q = query.toLowerCase();
-                return (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q);
-              }).map((u) => (
-                <button
-                  key={String(u._id)}
+          {/* List Content */}
+          <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4 no-scrollbar">
+            
+            {/* Conversations */}
+            {activeView === "conversations" && (
+              <div className="space-y-3 pt-2">
+                {(conversations || []).filter(c => {
+                  if (!query) return true;
+                  const q = query.toLowerCase();
+                  return (c.user?.name || "").toLowerCase().includes(q) || (c.lastMessage?.text || "").toLowerCase().includes(q);
+                }).filter((c) => String(c.user?._id) !== String(auth?.user?.id)).map((c) => (
+                  <button
+                    key={String(c.user._id)}
                     onClick={async () => {
-                      const uid = String(u._id);
+                      const uid = String(c.user._id);
+                      if (selectMode) {
+                        toggleSelect(uid);
+                        return;
+                      }
                       if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                        // navigate to full-screen chat on mobile (same tab)
                         router.push(`/messages?u=${uid}`);
                         return;
                       }
-                      setSelectedUser({ _id: uid, name: u?.name, avatar: u?.avatar });
-                      try { await markConversationRead(u._id); } catch (e) {}
+                      setSelectedUser({ _id: uid, name: c.user?.name, avatar: c.user?.avatar });
+                      try { await markConversationRead(c.user._id); } catch(e) {}
                     }}
-                    className={`w-full text-left flex items-center gap-3 p-2 rounded ${selectedUser && String(selectedUser._id) === String(u._id) ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
-                >
-                  <img src={u?.avatar || '/default-avatar.svg'} alt={u?.name} className="w-12 h-12 rounded-full" />
-                  <div className="flex-1">
-                    <div className="font-semibold text-sm">{u?.name}</div>
-                    <div className="text-xs text-gray-500">{u?.email}</div>
+                    className={`w-full text-left bg-white rounded-[24px] p-4 flex items-center gap-4 transition-all shadow-[0_2px_15px_rgba(0,0,0,0.03)] border ${selectedUser && String(selectedUser._id) === String(c.user._id) ? 'border-primary-300 ring-1 ring-primary-100' : 'border-gray-50 hover:border-gray-200'}`}
+                  >
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(String(c.user._id))}
+                        onChange={() => toggleSelect(String(c.user._id))}
+                        className="w-4 h-4 accent-primary-600"
+                      />
+                    )}
+                    <div className="relative shrink-0">
+                      <img
+                        src={c.user?.avatar || '/default-avatar.svg'}
+                        alt={c.user?.name}
+                        className="w-[52px] h-[52px] rounded-[16px] object-cover bg-gray-100"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "/default-avatar.svg";
+                        }}
+                      />
+                      {c.unreadCount > 0 && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#3e53d7] border-[3px] border-white rounded-full"></div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 pr-1">
+                      <div className="flex justify-between items-end mb-1">
+                        <div className="font-semibold text-gray-900 text-[16px] truncate pr-2">{c.user?.name}</div>
+                        <div className="text-[10px] font-bold text-[#64748b] tracking-wide whitespace-nowrap shrink-0 uppercase">
+                          {getTimeLabel(c.lastMessage?.createdAt)}
+                        </div>
+                      </div>
+                      <div className={`text-[14px] truncate ${c.unreadCount > 0 ? 'font-semibold text-gray-900 italic' : 'text-gray-500'}`}>
+                        {c.lastMessage?.text || 'No messages yet'}
+                      </div>
+                    </div>
+                    {c.unreadCount > 0 && <div className="absolute right-5 bottom-4 w-2 h-2 bg-[#3e53d7] rounded-full"></div>}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Contacts */}
+            {activeView === "contacts" && (() => {
+              const grouped = getGroupedContacts();
+              return Object.keys(grouped).sort().map(letter => (
+                <div key={letter} className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[#aeb6e8] font-black text-[22px] px-1">{letter}</span>
+                    <div className="h-px bg-gray-200 flex-1 ml-4 mr-2"></div>
                   </div>
-                </button>
+                  <div className="space-y-4">
+                    {grouped[letter].filter((u) => String(u._id) !== String(auth?.user?.id)).map(u => {
+                      const isOnline = onlineUsers?.has(String(u._id));
+                      const offlineLabel = u?.lastSeen ? `Offline • ${getTimeLabel(u.lastSeen)}` : "Offline";
+                      return (
+                        <button
+                          key={String(u._id)}
+                          onClick={async () => {
+                            const uid = String(u._id);
+                            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                              router.push(`/messages?u=${uid}`);
+                              return;
+                            }
+                            setSelectedUser({ _id: uid, name: u?.name, avatar: u?.avatar });
+                            try { await markConversationRead(u._id); } catch(e) {}
+                          }}
+                          className={`w-full flex items-center gap-4 group p-2 -mx-2 rounded-xl transition-colors ${selectedUser && String(selectedUser._id) === String(u._id) ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
+                        >
+                          <div className="relative shrink-0">
+                            <img
+                              src={u?.avatar || '/default-avatar.svg'}
+                              alt={u?.name}
+                              className="w-[52px] h-[52px] rounded-[16px] object-cover bg-gray-100 shadow-sm"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "/default-avatar.svg";
+                              }}
+                            />
+                            <div className={`absolute -bottom-1 -right-1 w-[14px] h-[14px] border-[2px] border-[#fafafa] md:border-white rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-gray-300'}`}></div>
+                          </div>
+                          <div className="flex-1 text-left">
+                            <div className="font-semibold text-gray-900 text-[16px]">{u?.name}</div>
+                            <div className="text-[13px] text-gray-500 mt-0.5">
+                              {isOnline ? 'Online' : offlineLabel}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               ));
             })()}
-          </div>
-        </section>
 
-        {/* Chat pane */}
-        <main className={`${selectedUser ? 'block' : 'hidden'} md:block md:col-span-2 bg-white rounded-lg shadow p-0 flex flex-col`}>
-          {selectedUser ? (
-            <div className="flex-1 flex flex-col">
-              <Chat otherUserId={selectedUser._id} full onBack={() => setSelectedUser(null)} />
+            {activeView === "settings" && (
+              <div className="pt-6 px-2">
+                <div className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-[0_2px_15px_rgba(0,0,0,0.03)]">
+                  <h3 className="text-[16px] font-bold text-gray-900 mb-2">Quick Settings</h3>
+                  <p className="text-[13px] text-gray-500 mb-4">
+                    Update your password, privacy, and notification preferences.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/settings")}
+                    className="w-full bg-[#3e53d7] text-white py-2.5 rounded-[12px] font-semibold hover:bg-[#3144c2] transition-colors"
+                  >
+                    Open Settings
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {selectMode && activeView === "conversations" && (
+            <div className="absolute bottom-[78px] left-0 right-0 px-5">
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                disabled={selectedIds.length === 0}
+                className="w-full bg-red-50 text-red-600 py-2.5 rounded-[12px] font-semibold border border-red-100 disabled:opacity-60"
+              >
+                Delete Selected ({selectedIds.length})
+              </button>
             </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500">Select a conversation to start chatting.</div>
           )}
-        </main>
+
+          {/* Floating Action Button */}
+          <div className="absolute bottom-24 right-5 md:bottom-20 md:right-5">
+            <button
+              className="w-[52px] h-[52px] bg-[#3e53d7] text-white rounded-[16px] flex items-center justify-center shadow-[0_8px_20px_rgba(62,83,215,0.35)] hover:bg-[#3144c2] hover:-translate-y-1 transition-all"
+              onClick={() => {
+                setActiveView("contacts");
+                searchInputRef.current?.focus();
+              }}
+              aria-label="Start a new message"
+            >
+              {activeView === 'conversations' ? <Edit2 className="w-6 h-6" strokeWidth={2.5}/> : <UserPlus className="w-[22px] h-[22px]" strokeWidth={2.5}/>}
+            </button>
+          </div>
+
+          {/* Bottom Navigation */}
+          <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 px-6 py-2 pb-5 md:pb-3 flex justify-evenly items-center shadow-[0_-8px_24px_rgba(0,0,0,0.02)]">
+            <button
+              onClick={() => setActiveView('conversations')}
+              className={`flex flex-col items-center gap-1 w-16 p-2 rounded-xl transition-colors ${activeView === 'conversations' ? 'text-[#3e53d7] bg-blue-50/50' : 'text-[#8692a6] hover:bg-gray-50'}`}
+            >
+              <MessageSquare className="w-[22px] h-[22px] fill-current" strokeWidth={2} />
+              <span className="text-[11px] font-semibold">Chats</span>
+            </button>
+            <button
+              onClick={() => setActiveView('contacts')}
+              className={`flex flex-col items-center gap-1 w-16 p-2 rounded-xl transition-colors ${activeView === 'contacts' ? 'text-[#3e53d7] bg-blue-50/50' : 'text-[#8692a6] hover:bg-gray-50'}`}
+            >
+              <Users className="w-[22px] h-[22px] fill-current" strokeWidth={2} />
+              <span className="text-[11px] font-semibold">Contacts</span>
+            </button>
+            <button
+              onClick={() => setActiveView('settings')}
+              className={`flex flex-col items-center gap-1 w-16 p-2 rounded-xl transition-colors ${activeView === 'settings' ? 'text-[#3e53d7] bg-blue-50/50' : 'text-[#8692a6] hover:bg-gray-50'}`}
+            >
+              <Settings className="w-[22px] h-[22px] fill-current" strokeWidth={2} />
+              <span className="text-[11px] font-semibold">Settings</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Chat Pane (Desktop) */}
+        <div className={`${selectedUser ? 'flex' : 'hidden'} md:flex md:col-span-2 flex-col w-full h-[100dvh] md:h-full bg-white md:rounded-[32px] md:shadow-[0_2px_25px_rgba(0,0,0,0.04)] md:border md:border-gray-100 overflow-hidden`}>
+          {selectedUser ? (
+            <Chat otherUserId={selectedUser._id} full onBack={() => {
+              if(window.innerWidth < 768) router.push('/messages');
+              setSelectedUser(null);
+            }} />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
+              <MessageSquare className="w-16 h-16 mb-4 text-gray-200" strokeWidth={1} />
+              <p className="text-lg font-medium text-gray-500">Select a conversation</p>
+              <p className="text-sm mt-2">Choose someone from the list to start chatting.</p>
+            </div>
+          )}
+        </div>
+
       </div>
+      <MobileBottomNav />
     </div>
   );
 };

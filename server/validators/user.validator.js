@@ -27,3 +27,15 @@ export const validateLoginInput = ({ email, password }) => {
     password,
   };
 };
+
+export const validateChangePasswordInput = ({ oldPassword, newPassword }) => {
+  if (!oldPassword || !newPassword) {
+    throw createHttpError(400, "Old and new password are required");
+  }
+
+  if (String(newPassword).length < 6) {
+    throw createHttpError(400, "New password must be at least 6 characters");
+  }
+
+  return { oldPassword, newPassword };
+};

@@ -22,3 +22,25 @@ export const validateCommentInput = ({ text }) => {
 
   return { text: text.trim() };
 };
+
+export const validateUpdatePostInput = ({ text, image, visibility, removeImage }) => {
+  if (text == null && image == null && !removeImage && !visibility) {
+    throw createHttpError(400, "No updates provided");
+  }
+
+  let vis = visibility;
+  if (visibility) {
+    const allowed = ["public", "followers", "private"];
+    vis = String(visibility).toLowerCase();
+    if (!allowed.includes(vis)) {
+      throw createHttpError(400, "Invalid visibility option");
+    }
+  }
+
+  return {
+    text: text != null ? String(text).trim() : undefined,
+    image,
+    visibility: vis,
+    removeImage: Boolean(removeImage),
+  };
+};

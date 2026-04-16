@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { Code2, Image as ImageIcon, Paperclip } from "lucide-react";
 import { useAuth } from "../context/authContext";
 import api from "../services/api";
+import Loader from "./Loader";
 
 const CreatePost = ({ onPostCreated }) => {
   const { auth } = useAuth();
@@ -11,6 +13,7 @@ const CreatePost = ({ onPostCreated }) => {
   const [preview, setPreview] = useState(null);
   const [visibility, setVisibility] = useState("public");
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!image) {
@@ -28,13 +31,18 @@ const CreatePost = ({ onPostCreated }) => {
     const formData = new FormData();
     formData.append("image", image);
 
-    const res = await api.post("/upload/post", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    setUploading(true);
+    try {
+      const res = await api.post("/upload/post", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-    return res.data.url;
+      return res.data.url;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -66,42 +74,55 @@ const CreatePost = ({ onPostCreated }) => {
 
   return (
     <form onSubmit={handleSubmit} className="mb-6">
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+      <div className="bg-white/90 p-4 sm:p-5 rounded-3xl shadow-sm border border-white/70">
         <div className="flex items-start gap-3">
           <img
             src={auth.user?.avatar || "/default-avatar.svg"}
             alt="you"
-            className="w-12 h-12 rounded-full object-cover border"
+            className="w-12 h-12 rounded-full object-cover border border-white/60"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/default-avatar.svg";
+            }}
           />
 
           <div className="flex-1">
             <textarea
+              id="create-post-input"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="What is on your mind?"
-              className="w-full p-3 border border-gray-200 rounded-md mb-2 focus:ring-2 focus:ring-blue-100 resize-none"
-              rows="3"
+              placeholder="What are you building today?"
+              className="w-full bg-[#f4f2f5] px-5 py-4 rounded-3xl text-sm sm:text-base text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-100 resize-none"
+              rows="2"
             />
 
             {preview && (
-              <div className="mb-2 relative">
+              <div className="mt-3 relative">
                 <img
                   src={preview}
                   alt="preview"
-                  className="w-full rounded-md object-cover max-h-60 border"
+                  className="w-full rounded-2xl object-cover max-h-64 border border-white/70"
                 />
                 <button
                   type="button"
                   onClick={() => setImage(null)}
-                  className="absolute top-2 right-2 bg-white/80 text-sm px-2 py-1 rounded-md hover:bg-white"
+                  className="absolute top-3 right-3 bg-white/90 text-xs px-3 py-1 rounded-full hover:bg-white"
                 >
                   Remove
                 </button>
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="w-9 h-9 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200"
+                  aria-label="Add code block"
+                >
+                  <Code2 className="w-4 h-4" />
+                </button>
+
                 <input
                   id="post-image"
                   type="file"
@@ -111,15 +132,24 @@ const CreatePost = ({ onPostCreated }) => {
                 />
                 <label
                   htmlFor="post-image"
-                  className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer bg-gray-50 hover:bg-gray-100 text-sm"
+                  className="w-9 h-9 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 cursor-pointer"
+                  aria-label="Add image"
                 >
-                  Choose Image
+                  <ImageIcon className="w-4 h-4" />
                 </label>
+
+                <button
+                  type="button"
+                  className="w-9 h-9 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200"
+                  aria-label="Attach file"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
 
                 <select
                   value={visibility}
                   onChange={(e) => setVisibility(e.target.value)}
-                  className="p-2 border rounded-md text-sm bg-white min-w-[120px]"
+                  className="hidden sm:block text-xs bg-white/90 border border-gray-200 rounded-full px-3 py-1 text-gray-600"
                 >
                   <option value="public">Public</option>
                   <option value="followers">Only followers</option>
@@ -127,15 +157,20 @@ const CreatePost = ({ onPostCreated }) => {
                 </select>
               </div>
 
-              <div className="w-full sm:w-auto">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full sm:w-auto bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
-                >
-                  {loading ? "Posting..." : "Post"}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={loading || uploading}
+                className="bg-primary-600 text-white px-6 py-2 rounded-full shadow-[0_12px_25px_rgba(67,56,202,0.25)] hover:bg-primary-700 transition"
+              >
+                {loading || uploading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader label="" size={16} />
+                    Publishing...
+                  </span>
+                ) : (
+                  "Publish"
+                )}
+              </button>
             </div>
           </div>
         </div>

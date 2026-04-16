@@ -48,3 +48,48 @@ export const getUserByIdService = async (userId) => {
 
   return user;
 };
+
+export const oauthLoginService = async ({ name, email, avatar }) => {
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = await User.create({ name, email, avatar });
+  } else {
+    // update avatar/name if provided
+    let updated = false;
+    if (avatar && user.avatar !== avatar) {
+      user.avatar = avatar;
+      updated = true;
+    }
+    if (name && user.name !== name) {
+      user.name = name;
+      updated = true;
+    }
+    if (updated) await user.save();
+  }
+
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+
+  return { token, user };
+};
+
+export const changePasswordService = async ({ userId, oldPassword, newPassword }) => {
+  ensureObjectId(userId, "Invalid user ID.");
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw createHttpError(404, "User not found");
+  }
+
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!isMatch) {
+    throw createHttpError(400, "Old password is incorrect");
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(newPassword, salt);
+  user.password = hashedPassword;
+  await user.save();
+  return true;
+};

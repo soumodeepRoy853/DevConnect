@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/authContext";
+import Loader from "./Loader";
 
 const RequireAuth = ({ children }) => {
   const { auth, isAuthReady } = useAuth();
@@ -15,7 +16,11 @@ const RequireAuth = ({ children }) => {
   }, [auth?.token, isAuthReady, router]);
 
   if (!isAuthReady) {
-    return <div className="text-center mt-10">Loading...</div>;
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader label="Loading" />
+      </div>
+    );
   }
 
   if (!auth?.token) {

@@ -74,8 +74,8 @@ export const getFollowDataService = async (userId) => {
   ensureObjectId(userId, "Invalid user ID.");
 
   const user = await User.findById(userId)
-    .populate("followers", "name email avatar")
-    .populate("following", "name email avatar");
+    .populate("followers", "name email avatar lastSeen")
+    .populate("following", "name email avatar lastSeen");
 
   if (!user) {
     throw createHttpError(404, "User not found.");

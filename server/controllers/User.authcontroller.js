@@ -2,10 +2,13 @@ import {
     getUserByIdService,
     loginUserService,
     registerUserService,
+    oauthLoginService,
+    changePasswordService,
 } from "../services/user.service.js";
 import {
     validateLoginInput,
     validateRegisterInput,
+    validateChangePasswordInput,
 } from "../validators/user.validator.js";
 
 export const registerUser = async (req, res) => {
@@ -58,6 +61,37 @@ export const getUser = async (req, res) => {
             message: "User fetched successfully",
             user,
         });
+    } catch (error) {
+        const status = error.status || 500;
+        res.status(status).json({ message: error.message || "Internal server error" });
+    }
+};
+
+export const oauthUser = async (req, res) => {
+    try {
+        const { name, email, avatar } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required' });
+
+        const { token, user } = await oauthLoginService({ name, email, avatar });
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+        });
+
+        res.status(200).json({ message: 'OAuth success', token, user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar } });
+    } catch (error) {
+        const status = error.status || 500;
+        res.status(status).json({ message: error.message || "Internal server error" });
+    }
+};
+
+export const changePassword = async (req, res) => {
+    try {
+        const payload = validateChangePasswordInput(req.body);
+        await changePasswordService({ userId: req.user.id, ...payload });
+        res.status(200).json({ message: "Password updated successfully" });
     } catch (error) {
         const status = error.status || 500;
         res.status(status).json({ message: error.message || "Internal server error" });

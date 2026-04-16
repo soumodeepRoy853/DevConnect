@@ -82,7 +82,15 @@ const FloatingChat = () => {
                     onClick={() => handleSelect(c.user)}
                     className={`flex items-center gap-2 p-1 rounded ${selected && String(selected._id) === String(c.user._id) ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
                   >
-                    <img src={c.user.avatar || '/default-avatar.svg'} alt={c.user.name} className="w-8 h-8 rounded-full" />
+                    <img
+                      src={c.user.avatar || '/default-avatar.svg'}
+                      alt={c.user.name}
+                      className="w-8 h-8 rounded-full"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "/default-avatar.svg";
+                      }}
+                    />
                     <div className="text-sm text-left">
                       <div className="font-semibold">{c.user.name}</div>
                       {c.unreadCount > 0 && (
@@ -98,7 +106,15 @@ const FloatingChat = () => {
                     onClick={() => handleSelect(u)}
                     className={`flex items-center gap-2 p-1 rounded hover:bg-gray-50`}
                   >
-                    <img src={u.avatar || '/default-avatar.svg'} alt={u.name} className="w-8 h-8 rounded-full" />
+                    <img
+                      src={u.avatar || '/default-avatar.svg'}
+                      alt={u.name}
+                      className="w-8 h-8 rounded-full"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "/default-avatar.svg";
+                      }}
+                    />
                     <div className="text-sm text-left">
                       <div className="font-semibold">{u.name}</div>
                     </div>
