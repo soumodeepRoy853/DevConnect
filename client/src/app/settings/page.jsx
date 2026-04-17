@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import RequireAuth from "../../components/RequireAuth";
 import api from "../../services/api";
 import Loader from "../../components/Loader";
@@ -96,12 +97,25 @@ const SettingsPage = () => {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-xl font-bold mb-4">Account Settings</h2>
         <div className="flex flex-wrap gap-3">
+          <Link
+            href="/profile"
+            className="px-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-700 font-semibold hover:border-primary-200 hover:text-primary-600"
+          >
+            View Profile
+          </Link>
           <button
             type="button"
             onClick={handleShareProfile}
             className="px-4 py-2 rounded-lg bg-[#d7edf7] text-[#355970] font-semibold"
           >
             Share Profile
+          </button>
+          <button
+            type="button"
+            onClick={logout}
+            className="px-4 py-2 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100"
+          >
+            Logout
           </button>
           <button
             type="button"

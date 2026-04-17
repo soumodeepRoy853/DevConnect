@@ -23,8 +23,14 @@ const ProfilePage = () => {
     try {
       const res = await api.get("/profile/my");
       setProfile(res.data.profile);
-    } catch {
-      setError("Failed to fetch profile.");
+      setError("");
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        setProfile(null);
+        setError("");
+      } else {
+        setError("Failed to fetch profile.");
+      }
     } finally {
       setLoading(false);
     }
@@ -78,8 +84,14 @@ const ProfilePage = () => {
 
   if (!profile) {
     return (
-      <div className="text-center mt-20 text-gray-600">
-        No profile found. Please create one.
+      <div className="text-center mt-20 text-gray-600 space-y-4">
+        <p>No profile found. Please create one.</p>
+        <Link
+          href="/create-profile"
+          className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white"
+        >
+          Create Profile
+        </Link>
       </div>
     );
   }

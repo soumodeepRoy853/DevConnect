@@ -2,11 +2,23 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "../context/authContext";
-import { Search, Settings, Home, Compass, MessageSquare, User, LogOut, LogIn, UserPlus, Users2 } from "lucide-react";
+import { Search, Settings, Home, Compass, MessageSquare, LogIn, UserPlus, Users2 } from "lucide-react";
 
 const Navbar = () => {
-  const { auth, logout, unreadUsersCount } = useAuth();
+  const { auth, unreadUsersCount } = useAuth();
+  const pathname = usePathname();
+  const isActive = (href) => {
+    if (href === "/feed") {
+      return pathname === "/" || pathname === "/feed" || pathname.startsWith("/feed/");
+    }
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+  const linkClass = (href) =>
+    `flex flex-col items-center gap-1 ${isActive(href) ? "text-primary-600" : "text-gray-500 hover:text-primary-600"}`;
+  const labelClass = (href) =>
+    `text-[10px] font-semibold ${isActive(href) ? "border-b-2 border-primary-600" : ""}`;
 
   return (
     <>
@@ -30,47 +42,39 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <Link href="/settings" className="text-gray-500 hover:text-primary-600" title="Settings">
-              <Settings className="w-5 h-5" />
-            </Link>
-
             <div className="hidden md:flex gap-4 items-center text-gray-500">
-              <Link href="/search" title="Search" aria-label="Search" className="hover:text-primary-600 flex flex-col items-center gap-1">
+              <Link href="/search" title="Search" aria-label="Search" className={linkClass("/search")}>
                 <Search className="w-5 h-5" />
-                <span className="text-[10px] font-semibold">Search</span>
+                <span className={labelClass("/search")}>Search</span>
               </Link>
 
               {auth.user ? (
                 <>
-                  <Link href="/feed" title="Home" aria-label="Home" className="hover:text-primary-600 flex flex-col items-center gap-1">
+                  <Link href="/feed" title="Home" aria-label="Home" className={linkClass("/feed")}>
                     <Home className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold">Home</span>
+                    <span className={labelClass("/feed")}>Home</span>
                   </Link>
-                  <Link href="/explore" title="Discover" aria-label="Discover" className="hover:text-primary-600 flex flex-col items-center gap-1">
+                  <Link href="/explore" title="Discover" aria-label="Discover" className={linkClass("/explore")}>
                     <Compass className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold">Discover</span>
+                    <span className={labelClass("/explore")}>Discover</span>
                   </Link>
-                  <Link href="/community" title="Community" aria-label="Community" className="hover:text-primary-600 flex flex-col items-center gap-1">
+                  <Link href="/community" title="Community" aria-label="Community" className={linkClass("/community")}>
                     <Users2 className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold">Community</span>
+                    <span className={labelClass("/community")}>Community</span>
                   </Link>
-                  <Link href="/messages" title="Messages" aria-label="Messages" className="relative hover:text-primary-600 flex flex-col items-center gap-1">
+                  <Link href="/messages" title="Messages" aria-label="Messages" className={`relative ${linkClass("/messages")}`}>
                     <MessageSquare className="w-5 h-5" />
                     {unreadUsersCount > 0 && (
                       <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5">
                         {unreadUsersCount}
                       </span>
                     )}
-                    <span className="text-[10px] font-semibold">Messages</span>
+                    <span className={labelClass("/messages")}>Messages</span>
                   </Link>
-                  <Link href="/profile" title="Profile" aria-label="Profile" className="hover:text-primary-600 flex flex-col items-center gap-1">
-                    <User className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold">Profile</span>
+                  <Link href="/settings" title="Settings" aria-label="Settings" className={linkClass("/settings")}>
+                    <Settings className="w-5 h-5" />
+                    <span className={labelClass("/settings")}>Settings</span>
                   </Link>
-                  <button onClick={logout} title="Logout" aria-label="Logout" className="hover:text-red-600 text-red-500 flex flex-col items-center gap-1">
-                    <LogOut className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold">Logout</span>
-                  </button>
                 </>
               ) : (
                 <>
