@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { io } from "socket.io-client";
 import api from "../services/api";
 import { useRouter } from "next/navigation";
@@ -64,6 +64,9 @@ export const AuthProvider = ({ children }) => {
         avatar: sUser.avatar || sUser.image || null,
       };
       setAuth({ user: mapped, token: session.token });
+    }
+    if (status === "unauthenticated") {
+      setAuth({ user: null, token: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, status]);
@@ -290,11 +293,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setAuth({ user: null, token: null });
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
+    await signOut({ redirect: false });
     router.push("/login");
   };
 

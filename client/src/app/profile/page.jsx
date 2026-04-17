@@ -96,11 +96,7 @@ const ProfilePage = () => {
     );
   }
 
-  const roleLabel = profile.skills?.find((skill) => /backend/i.test(skill))
-    ? "Backend Developer"
-    : profile.skills?.[0]
-      ? `${profile.skills[0]} Developer`
-      : "Developer";
+  const roleLabel = profile.education?.trim() || "Developer";
   const aboutText = profile.bio || "Tell the community what you are building and learning.";
   const curatorBase = (profile.skills?.[0] || "DEV").replace(/[^a-z0-9]+/gi, "_").toUpperCase();
   const curatorId = `${curatorBase}_01`;

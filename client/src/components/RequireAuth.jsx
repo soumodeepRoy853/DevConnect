@@ -11,6 +11,7 @@ const RequireAuth = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
   const isPublicAuthRoute = pathname === "/login" || pathname === "/register";
+  const isLoggedIn = Boolean(auth?.token) || status === "authenticated";
 
   useEffect(() => {
     // Only redirect when NextAuth says unauthenticated and local auth is ready
@@ -26,10 +27,7 @@ const RequireAuth = ({ children }) => {
   }
 
   if (status === "loading" || !isAuthReady) return null;
-  if (status === "authenticated" && !auth?.token) return null;
-  if (!auth?.token) {
-    return null;
-  }
+  if (!isLoggedIn) return null;
 
   return <>{children}</>;
 };
