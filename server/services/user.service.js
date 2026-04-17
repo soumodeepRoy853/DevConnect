@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 import { createHttpError } from "../utils/httpError.js";
@@ -52,7 +53,12 @@ export const getUserByIdService = async (userId) => {
 export const oauthLoginService = async ({ name, email, avatar }) => {
   let user = await User.findOne({ email });
   if (!user) {
-    user = await User.create({ name, email, avatar });
+    const safeName = name && String(name).trim() ? String(name).trim() : String(email).split("@")[0];
+    // Generate a random password hash to satisfy the required field for OAuth-created users
+    const salt = await bcrypt.genSalt(10);
+    const randomPassword = crypto.randomBytes(24).toString("hex");
+    const hashedPassword = await bcrypt.hash(randomPassword, salt);
+    user = await User.create({ name: safeName, email, avatar, password: hashedPassword });
   } else {
     // update avatar/name if provided
     let updated = false;
