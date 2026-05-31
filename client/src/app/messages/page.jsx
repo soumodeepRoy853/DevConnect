@@ -24,6 +24,25 @@ const MessagesPage = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const router = useRouter();
   const searchInputRef = useRef(null);
+  const listRef = useRef(null);
+  const [listMaxHeight, setListMaxHeight] = useState(null);
+
+  useEffect(() => {
+    const updateListHeight = () => {
+      if (!listRef.current) return;
+      const rect = listRef.current.getBoundingClientRect();
+      const bottomInset = window.innerWidth < 768 ? 104 : 24;
+      const available = window.innerHeight - rect.top - bottomInset;
+      setListMaxHeight(available > 0 ? Math.floor(available) : 0);
+    };
+
+    const rafId = requestAnimationFrame(updateListHeight);
+    window.addEventListener("resize", updateListHeight);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", updateListHeight);
+    };
+  }, [activeView, selectMode]);
 
   useEffect(() => {
     let mounted = true;
@@ -131,11 +150,11 @@ const MessagesPage = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-[#fafafa] flex flex-col ${selectedUser ? 'md:bg-transparent' : ''}`}>
-      <div className={`flex-1 w-full max-w-[1200px] mx-auto ${selectedUser ? 'md:grid md:grid-cols-3' : 'md:grid md:grid-cols-1 lg:grid-cols-[1fr_2fr] lg:gap-8'} md:p-6 lg:p-8`}>
+    <div className={`h-[calc(100dvh-72px)] overflow-hidden bg-[#fafafa] flex flex-col ${selectedUser ? 'md:bg-transparent' : ''}`}>
+      <div className={`flex-1 min-h-0 w-full max-w-[1200px] mx-auto ${selectedUser ? 'md:grid md:grid-cols-3' : 'md:grid md:grid-cols-1 lg:grid-cols-[1fr_2fr] lg:gap-8'} md:p-6 lg:p-8`}>
         
         {/* Left/Main List View */}
-        <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} flex-col w-full h-full max-w-full md:max-w-md lg:max-w-[480px] bg-[#fafafa] md:bg-white md:rounded-[32px] md:shadow-sm md:border md:border-gray-100 overflow-hidden relative pb-[80px] md:pb-0 mx-auto`}>
+        <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} flex-col w-full h-full min-h-0 max-w-full md:max-w-md lg:max-w-[480px] bg-[#fafafa] md:bg-white md:rounded-[32px] md:shadow-sm md:border md:border-gray-100 overflow-hidden relative pb-[80px] md:pb-0 mx-auto`}>
           
           {/* Header */}
           <div className="px-5 pt-5 pb-3 bg-[#fafafa] md:bg-white z-10">
@@ -184,7 +203,11 @@ const MessagesPage = () => {
           </div>
 
           {/* List Content */}
-          <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4 no-scrollbar">
+          <div
+            ref={listRef}
+            style={listMaxHeight ? { height: `${listMaxHeight}px` } : undefined}
+            className="min-h-0 overflow-y-auto md:overflow-y-scroll px-4 pb-32 space-y-4"
+          >
             
             {/* Conversations */}
             {activeView === "conversations" && (
@@ -376,7 +399,7 @@ const MessagesPage = () => {
         </div>
 
         {/* Chat Pane (Desktop) */}
-        <div className={`${selectedUser ? 'flex' : 'hidden'} md:flex md:col-span-2 flex-col w-full h-[100dvh] md:h-full bg-white md:rounded-[32px] md:shadow-[0_2px_25px_rgba(0,0,0,0.04)] md:border md:border-gray-100 overflow-hidden`}>
+        <div className={`${selectedUser ? 'flex' : 'hidden'} md:flex md:col-span-2 flex-col w-full h-full min-h-0 bg-white md:rounded-[32px] md:shadow-[0_2px_25px_rgba(0,0,0,0.04)] md:border md:border-gray-100 overflow-hidden`}>
           {selectedUser ? (
             <Chat otherUserId={selectedUser._id} full onBack={() => {
               if(window.innerWidth < 768) router.push('/messages');
